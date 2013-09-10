@@ -1,0 +1,555 @@
+
+Implementations, Frames, Bindings, and Zexprs:
+
+Predicates and actions can take arguments that are not values, but
+rather "patterns" that are meant to match values. For this reason the
+methods of objects that that implement predicates and actions do not
+take values as arguments, but instead take two arguments: a "frame"
+argument, a "bindings" argument and a "zexpr" argument. Generally, the
+frame argument supplies the execution context (agent, intention,
+etc.), the bindings argument supplies the dynamic content of the
+arguments (e.g., the bindings of any variables that appear in the
+arguments) and the zexpr argument specifies the static content of the
+arguments.
+
+
+Corresponding to an action, say "do_this" is an implementation object
+that has a method "execute" taking a frame argument, a bindings
+argument and a zexpr argument.
+
+Consider executing the action (do_this 1 (+ 3 $x) $y) where $x has
+been bound to 3 and $y is unbound.  
+
+The "frame" object passed in to this method specifies the agent that
+is executing the expression, and amongst other things, that agent's
+interpretation of the symbols used (in this case "+").
+
+The "bindings" object passed in to this method can be thought of as
+similar to a stack frame that has space to record the values of $x and
+$y.
+
+The "zexpr" object specifies that (i) the first argument is the
+constant 1, (ii) the second argument is obtained by applying the "+"
+function (looked up in the frame object) to the constant 3 and the
+value (from the bindings object) of the bound variable $x, and (iii)
+the third argument is not evaluable, but rather a pattern to match and
+that matching this argument with a value consists of writing the value
+into the bindings object.
+
+A zexpr object includes the following methods:
+    evalp(frame, bindings, argindex)
+     Return whether the specified arg can be evaluated.
+    eval(frame, bindings, argindex)
+     Return the value of the specified arg
+     or raise RuntimeModeException if it cannot be evaluated.
+    match(frame, bindings, argindex, value)
+     Try to match the specified arg to the value, return whether successful.
+    nargs()
+     Return the number of arguments.
+
+Other methods that can be derived from these methods:
+    found_solution(frame, bindings)
+     Indicate that a solution has been found to the predicate.
+    evaltuple(frame, bindings)
+     Return the evaluated arguments as a tuple. May raise RuntimeModeException.
+
+Where the zexpr is to be passed to a predicate it must also define:
+    default(frame, bindings, argindex, value)
+     Return the value of the specified arg if it can be evaluated.
+     Otherwise return value. If value is not None, match value against the
+     argument and if the match fails raise a RuntimeException.
+
+
+If evalp for a particular argument returns false, then that argument
+is a pattern to match using the match method.  This is the case for
+the second argument above: zexpr.evalp(frame, bindings, 2) returns False.
+
+If the call to the match method for a pattern argument returns True,
+then the bindings object will have been updated to set the value of
+any variables occurring in that argument.  In the above example,
+zexpr.match(frame, bindings, 2, "HI") will set the value of $y in
+bindings to "HI".
+
+Note that in all of the zexpr methods, whether an argument "can be
+evaluated" or not is based on the state of the variable upon entry to
+the execute method.  That is, it does not change over the execution of
+the action.  Thus even after calling zexpr.match(frame, bindings, 2, "HI"),
+zexpr.evalp(frame, bindings, 2) will still return False.
+
+Predicates:
+
+Each predicate implementation must define the following methods:
+  find_solutions(frame, bindings, zexpr)
+    Calls zexpr.found_solution(frame, bindings) for each solution to the
+    predicate after instantiating the pattern arguments for easch
+    solution using the zexpr.match method.
+  conclude(frame, bindings, zexpr)
+    Asserts the truth of the predicate for the given arguments.  Keeps
+    track of any changes for a later check_triggers test.  No return value.
+  retractall(frame, bindings, zexpr)
+    Denies the truth of the predicate for all instances of the given
+    arguments.  Keeps track of any changes for a later check_triggers
+    test.  No return value.
+#  check_triggers(frame, bindings)
+#    Performs any consequential actions after the KB has been changed.
+
+The equivalents for Predicate Expressions (which are their own zexpr):
+
+  compute(frame, bindings)
+  predexpr_conclude(frame, bindings)
+  predexpr_retractall(frame, bindings)
+
+In the future:
+  Find_solutions will take an extra "mode" argument to allow 3-valued
+    logic; {True or False} and will enumerate positive or negative
+    solutions.
+  Conclude and retractall will be replaced with passert(frame, bindings,
+    zexpr, mode) where mode is True, False, or None. None indicates
+    that the value is unknown. Passert will need to record facts
+    asserted or deleted, but in a public place, eliminating the need
+    for the check_triggers method.
+  execute will be replaced with action_step(frame, bindings, 
+
+*** Parameter variables in closures (evalp depends upon bindings from
+    the calling context telling it which parameter variables are
+    evaluable).
+
+*** Frame:
+	Context of execution (stack, intention)
+	Interpretation of symbols (agent kb)
+*** Bindings:
+	Place for dynamic information (variable frame, bindings)
+
+*** Do we need other zexpr methods for when the zexpr is to be passed
+    to an action.
+*** Do we need other zexpr methods for when the zexpr arguments are
+    predexprs, taskexprs, rather than patexprs?
+
+*** Generally bindings and zexprs are "paired-up" in that a certain
+    class of zexpr goes with a certain class of bindings.  This is
+    useful when the zexpr needs to know about special methods of the
+    bindings (for example, knowing whether closure parameter variables
+    are bound or not).
+
+DE-THREADING THE EXECUTION
+
+Rather than having the intentions run in seprate threads (which gives
+us no control over priorities and reduced introspection into the
+intentions) SPARK is moving to a de-threaded execution model where
+execution consists of looping between selecting an ``intention'' to
+work on and then progressing that intention. 
+
+An intention is a tree-like structure of TFrames. TFrames commonly
+have some execution state. All leaf TFrames are able to be selected
+for execution. Non-leaf TFrames will not be selected for execution
+while they still have children. For example, a TFrame waiting on a
+condition could have a child TFrame representing that condition.
+
+Each TFrame has a result field to indicate that it has completed. The
+result field is either None if the TFrame has not completed, SUCCESS
+if the TFrame has completed successfully, or an instance of Failure if
+the TFrame has completed unsuccessfully. 
+
+To progress an intention, a leaf TFrame of that intention is selected
+and if the TFrame has not completed, the tfcont() method is
+called. 
+
+
+Event
+
+Note each event does NOT have a link to the TFrame that triggered it
+(this prohibits signal and monitor handlers to generate events tied to
+the tframe that is signalled or has the monitor rather than the tframe
+that initiated the signal).
+
+  find_tframes(frame, parent_tframe) - return a list of tframes
+    responding to this event.
+
+TFrame
+
+
+  tf_set_completed(frame, result) - generates an event to indicate
+    completed.
+
+  agent.signal(tframe, signal) - Send an asynchronous interrupt/signal
+    to another TFrame, by calling tfhandlesig on the tframe. If the
+    TFrame does not handle the signal and has children, then tfsignal
+    is called on each of the children in turn. If the TFrame does not
+    handle the signal and has no children, then the result field of
+    the TFrame is set to SignalFailure(tframe, signal), an instance of
+    Failure.
+
+
+  parent()
+  is_solver()
+  add_monitor(frame, monitor)
+  remove_monitor(frame, monitor)
+  remove_all_monitors(frame)
+  
+
+Methods implemented by implementer of a particular TFrame.  Methods
+with (*) are allowed to generate events and do context queries (which
+are assumed to be created "under" this tframe)
+
+  tfcont(frame) (*) - Perform a step of self and may generate events.
+    Self should have no children because this is the first time it is
+    being stepped or because it is a leaf that has been selected for
+    execution.
+
+  tfhandlecfin(frame, childtframe, succfail) (*) - Handle the success or
+    failure of a child and may generate events.  Self may or may not
+    have any children left. Although a TFrame with multiple children
+    will never be selected for execution as a leaf node, it does get a
+    chance to react to the completion of one of it's children.
+
+  tfhandlesig(frame, signal) - Handle an asynchronous
+    interrupt/signal.  This should return true if the signal is
+    handled or false otherwise.
+
+  tfhandlemon(frame, monitor) - Handle a monitor. Return True if you
+    want the monitor to stay active.
+
+Monitor methods
+
+  trigger(frame) - called when condition met
+  activate(frame) - abstract, called by install
+  deactivate(frame) - abstract, called by uninstall
+  
+One particularly common subclass of TFrame is TaskExprTFrame. This is
+a TFrame that is responsible for executing a task expression and does
+so by having a stack of taskexpressions being executed, analogous to
+the tree of TFrames being executed in an intention. Here the
+TaskExprTFrame keeps track of the common bindings object to be used
+for the all of the task expressions. Analogous to the repeated calls
+to tfcont and tfcfin methods of TFrames, within the execution of the
+TaskExprTFrame methods we have repeated calls to tcont and tcfin
+methods of TaskExpr objects, with the following differences:
+
+(i) The TaskExpr methods require an additional argument, frame, bindings, to
+provide the dynamic state (TaskExprs are static objects that can be
+used by multiple intentions at the same time, whereas TFrame objects
+are new instances for each occurrence and have their own state).
+
+(ii) While the TFrame constructor can set up the initial state of the
+TFrame, with TaskExprs, we are not so fortunate. Therefore we need to
+supply an initialization method for when a task expression is first
+introduced.
+
+(iii) The taskexpr methods can also return a TaskExpr as a stepresult.
+In this case the TaskExpr is pushed on the stack and its tstart method
+is called (analogous to the case in TFrame execution of a method
+returning a TFrame). If the taskexpr methods return a TFrame, this
+indicates that the internal execution of the TaskExprTFrame should
+stop and the TaskExprTFrame method should return that TFrame. If the
+taskexpr method returns SUCCESS or a Failure, execution of the
+TaskExprTFrame method continues internally with the next TaskExpr on
+the stack, or stops by returning that value if there are no more
+TaskExprs on the stack.
+
+  
+TaskExprTFrame methods:
+
+  t_push_cont(frame, taskexpr) - called from within tcont/tcfin
+  t_result_pop(frame, result)
+
+TaskExpr methods:
+
+  tinit(tframe) - Initialize any components of tframe that need to be
+    set when starting to execute this taskexpr. Note - this does not
+    have a frame parameter, enabling the method to be called during
+    the construction of a TaskExprTFrame.
+
+  tcont(frame, tframe) - Perform a step of self and return a stepresult.
+    Self should have no children because this is the first time it is
+    being stepped or because it is a leaf that has been selected for
+    execution.
+
+  tcfin(frame, tframe, taskexpr, succfail) - Handle the success or failure of a
+    child taskexpr and return a stepresult.  Self may or may not have
+    any children left. Although a TFrame with multiple children will
+    never be selected for execution as a leaf node, it does get a
+    chance to react to the completion of one of it's children. (will
+    be called after a t_push_cont)
+
+  thandlecfin(frame, tframe, child_tframe, succfail) - Handle success
+    or failure of a child tframe. (will be called after an add_tframe)
+
+  thandlesig(frame, tframe, signal) - Handle an asynchronous interrupt/signal.  This
+    should return true if the signal is handled or false otherwise.
+
+  thandlemon(frame, tframe, monitor)
+
+NOTE: with the execution engine single threaded, we can include the
+current "frame" context as an attribute of the agent.
+
+OVERVIEW
+
+TFrame infrastructure
+TaskExpr methods for TaskExprTFrame
+Intention infrastructure & execution
+frame, bindings having pointer to agent
+change all frame, bindings to tframes
+GoalTFrame(frame, bindings, kind, sym, zexpr)
+rework trace.py
+
+Change bindings to evaluate evaluables up front - put Nones in
+bivar_indices to indicate parameter was evaluable - eliminates need
+for call_mode, negated_bivar_binder.
+
+Introduce ActionExpr and use in DoTaskExpr.  Use PredExpr as argument
+in AchieveTaskExpr - may have problems with arguments: the arguments
+may be serial for testing a predicate (against the db) but parallel
+for achieving a predicate. Maybe all predicates should be parallel?
+
+Unify all arity predicates and imp predicates.
+
+
+function imp.call/inverse
+predicate imp.find_solutions/conclude
+
+action do imp.tframe OR SHOULD IT BE procedure OR SHOULD IT BE
+imp.stepresult OR SHOULD THE imp point to the procedure selection
+mechanism for do:/achieve:
+
+NO - you might want a specialy implemented predicate, but you always
+trigger a procedure for achieve/test/newfact/...
+
+achieve procedure
+test procedure
+newfact procedure
+
+
+PROBLEM: frame, bindings does not uniquely determine an intention - (needed
+for context) - perhaps change frame, bindings to tframe in fun/pred calls?
+
+
+TFrame always has access to intention (& through it the agent)
+TFrame should have:
+  method for finding solutions to context queries
+  #method for copying state (including monitors)
+
+TaskExprTFrame has (frame, bindings) variable values for expressions relative
+to TaskExpr
+
+Frame
+  agent()
+  intention()
+  imp(symbol/string?)
+  - method for computing context properties, roles, etc.
+
+  - optionally have dynamic information (frame, bindings) for zexprs to
+    access The zexprs are allowed to have intimate knowledge of this
+    info.  It will be simplest if all exprs use a uniform way of
+    accessing TaskExprTFrames, PredExprFrames, PatExprFrames, etc.
+  # support for predicate testing (cf. old Frame, Bindings)
+  ffound_solution(bindings) - indicate that a solution has been found
+  push(computer)
+  pop()
+  compute(subframe) - is this needed?
+
+ExprFrame
+  - a kind of frame that includes variable info (cf. old Frame, Bindings)
+  get(varid) - for $var and non-first occurrences of bivars
+  get_captured(varid) - for $$var etc.
+  get_either(varid) - derived from above
+  set(varid, value) for first occurrence of a local variable
+  # for the following it could be useful to include the index into the zexpr
+  bivar_first_evaluate(self, varid) - first occurrence of bivar
+  bivar_first_match(self, varid, value) - match on first occurrence
+  
+Agent:
+
+  compute_stack
+
+
+
+COMPUTE & CO.
+
+need to have frame + bindings rather than bindings or frame
+push bindings on stack when starting to use a new sub-bindings
+
+
+evaluate_bivars(frame) -> (frame, bindings)
+bivar_first_evaluate?
+make_bindings(frame, bindings, zexpr) - is zexpr needed?
+...Bindings(captured, frame, bindings, bivar_indices_dict, zexpr)
+
+
+[do: (f $x $y)]
+(do f {proc [$x $y] ...} )
+
+goal, G=[achieve: (p $x $y)]
+find procedures, TFs, by looking up (achieve p {proc [$x $y] ...} )
+(and filtering)
+if |TFs| > 2 or (extendedmeta p):
+   try [do: (metaselect G TFs $TF)] -> TFs = [$TF]
+if |TFs| = 0
+   fail G
+else:
+   randomly select TF and [execute: TF]
+
+to handle a goal [<cuesymbol>: (<symbol> <arg1> ...)]
+
+[context: (= $tframelist (get_filtered_tfames <goal>))
+ try: [context: (or (> (length $tframelist) 2) (extendedmeta <symbol>))
+       do: (metaselect <goal> $tframelist $selected)]
+       [execute: $selected]
+      [context: (= (length $tframelist) 0)]
+       [fail: (no_applicable_procedures <goal>)]
+      [context: (metaselectrandom $tframelist $selected)]
+       [execute: $selected]]
+
+
+[newfact: (p $x $y)]
+(newfact p {proc [$x $y] ...})
+
+access to context/frame AS AN EXPLICIT PARAMETER
+[multigoal: ()]
+
+[do: (metaselect goaltframe TFrames ResultTframe)]
+
+[execute: (applytask $closure $arg ...)]
+[execute: $tframe]
+[execute: (tframe [do: ...])]
+
+applytask is a function that returns a tframe
+
+You can get properties of a tframe
+You can get properties of a goal:
+    cuesymbol (e.g. achieve)
+    goalsymbol (e.g. mypred)
+    properties (e.g. important) - cache properties when needed (use call_mode)
+    intention (root or parallel branch?)
+You can get properties of a thread (properties back up the intention from goal)
+You can get properties of an intention.
+
+
+Procedure types:
+
+(1) Respond to an event asynchronously (create new intention that can
+    be run after intention step yields).
+
+(2) Respond to an event synchronously (the intention that triggered
+    the event is not allowed to continue until the triggered event
+    completes)
+
+(2a) Procedure performs actions that do not affect the success or
+     failure of the triggering event's intention and do not bind
+     variables in the triggering event's intention.
+
+(2b) Procedure performs actions that determine the success of failure
+     of the triggering event's intention and binds variables.
+
+
+################################################################
+Interpreter loop
+
+(Note: PI can be marked completed and/or have subPIs)
+
+Select intention leaf:
+if leaf completed:
+    pop leaf and dependency link
+    tell parent of child's completion -> this can generate events
+else:
+    step leaf -> this can generate events (dbchanges, success, failure)
+calculate SOAK chain (for each event?)
+if procedures:
+    select one maximally meta procedure and intend it
+    add a dependency link
+
+We could include "leaf completed" into step of a leaf, but ALL leaves
+would have this behavior, with no variability.
+
+Note that we currently are not able to trigger procedures on
+adding/removing tframe and dependency link.
+
+For symmetry: if subprocedure asserts "I am done" and interpreter
+handles it on the next cycle (unless otherwise handled) then parent
+should assert "I want goal done" and interpreter should handle it in
+the next cycle (unless otherwise handled).  Not sure how to achive
+this.
+
+
+################################################################
+
+TFrames are treated in different ways:
+
+Most fact-invoked tframes are intended at the top-level and do not add
+a suspend link to the tframe that triggered the event. Success causes
+the tframe to go away. Failure may be a reportable error.
+
+cue: [newfact: (p ...)]
+
+
+Most goal-invoked tframes are intended under the tframe that triggered
+the event. They add a suspend link to the triggering tframe.  Both
+success and failure are reported to the parent.
+
+cue: [do: (act ...)]
+cue: [achieve: (p ...)]
+
+
+Meta-level tframes include a suspend link to the tframe that triggered
+the event. Success causes the tframe to go away. Failure may be a
+reportable error.
+
+cue: [meta: (soapi tframe event tframes)]
+cue: [meta: (success tframe event tframe)]
+cue: [meta: (failure tframe event tframe)]
+
+TODO:
+
+Standard meta-level procedure.
+Independent thread.
+Percepts.
+Interpreter.py support.
+Tracing support.
+[on:...] [finish:] support.
+Test meta-level support.
+
+
+NOTE:
+
+If goal events are treated like other events by the triggerer, then
+the triggerer must handle the possibility that nothing responds to the
+event.
+
+
+e_sync_parent = TFrame to suspend
+e_solver_target = what to notify on completion (if not None, choose one procedure)
+
+A procedure is something that can generate tframes
+A procedure instance is a tframe
+
+################################################################
+IMPLEMENTATIONS
+
+declarations on symbols:
+  kind: function, predicate, action (, constant?)
+  argument signature: numargs (, keyargs, types?)
+
+  For predicates:
+  defdyn: +absolute (imp doesn't rely on agent),
+  	  -relative (agent is parameter),
+	     +static (does not depend upon state of agent & data structures)
+	     	     cannot conclude/retract except on load
+		     does not trigger events
+		     must not be changed after being tested
+	     -dynamic (depends upon state of agent & data structures)
+	  +det (will always give the same results)
+	  -nondet (may not return the same value even at the same time)
+  deterministic modes: (what parameters need to be bound for <=1 solution)
+
+  For predicates and actions:
+  allowed modes: what parameters must be bound for call/do (but not achieve?)
+  roles: (associate roles with parameters)
+  features:
+
+  For procedures:
+  allowed modes:
+  features:
+
+imp is absolute
+pred:(imp $symbol $imp) of a fun/pred/action is always absolute
+
+function/predicate/action

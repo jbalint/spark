@@ -1,0 +1,227 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 24 $" *#
+#* $Source: /homedir/cvs/cvsroot/spark/src/spark/tests/advice_test.spark,v $ *#
+#*****************************************************************************#
+main: advice_test
+
+importall: spark.lang.list
+importall: spark.lang.advice
+importall: spark.lang.meta
+
+{defaction (advice_test $args) features: [x y]}
+{defaction (mygoal $x) features: [x z]}
+{defpredicate (Mode $pref $m)}
+
+# features
+{deffunction (mode $m)}
+
+# roles
+{deffunction (command_line_args $x)}
+{deffunction (mygoalarg $x)}
+
+{defconstant x}
+{defconstant y}
+{defconstant z}
+
+
+{defprocedure print_advice_used
+  cue: [newfact: (AppliedAdvice +$task +$advice)]
+  precondition: (TaskId $task $tid)
+  body: [do: (print "*  applied advice: %r" [$advice])]}
+
+{defprocedure print_objective_adopted
+  cue: [newfact: (AdoptedTask +$task)]
+  precondition: (and (Objective $task $obj) (= $task $obj) (Feature $task x)
+		     (TaskId $task $tid) #(TaskIcl $task $icl)
+		     )
+  body: [do: (print "*  adopted_objective: %s" [$tid])]
+  }
+{defprocedure print_objective_completed
+  cue: [newfact: (CompletedTask +$task)]
+  precondition: (and (Objective $task $obj) (= $task $obj) (Feature $task x) (TaskId $task $tid))
+  body: [do: (print "*  completed_objective: %s" [$tid])]
+  }
+{defprocedure print_objective_failed
+  cue: [newfact: (FailedTask +$task +$reason)]
+  precondition: (and (Objective $task $obj) (= $task $obj) (Feature $task x) (TaskId $task $tid))
+  body: [do: (print "*  failed_objective: %s %s" [$tid $reason])]
+  }
+{defprocedure print_object_level_goals_adopted
+  cue: [newfact: (AdoptedTask +$task)]
+  precondition: (and (Objective $task $obj) (not (= $task $obj)) (Feature $task x)
+		     (TaskId $task $tid) #(TaskIcl $task $icl)
+		     )
+  body: [do: (print "*  goal_posted: %s" [$tid])]
+  }
+{defprocedure print_object_level_goals_completed
+  cue: [newfact: (CompletedTask +$task)]
+  precondition: (and (Objective $task $obj) (not (= $task $obj)) (Feature $task x)
+		     (TaskId $task $tid) #(TaskIclDone $task $icl)
+		     )
+  body: [do: (print "*  goal_succeeded: %s" [$tid])]
+  }
+{defprocedure print_object_level_goals_failed
+  cue: [newfact: (FailedTask +$task +$reason)]
+  precondition: (and (Objective $task $obj) (not (= $task $obj)) (Feature $task x)
+		     (TaskId $task $tid))
+  body: [do: (print "*  goal_failed: %s %s" [$tid $reason])]
+  }
+{defprocedure print_object_level_procedures_started
+  cue: [newfact: (StartedProcedure +$tframe)]
+  precondition: (and (Objective $tframe $obj) #(Feature $task x)
+		     (ProcInstId $tframe $pid))
+  body: [do: (print "*  procedure_started: %s with roles: %s" [$pid (roles $tframe)])]
+  }
+{defprocedure print_object_level_procedures_completed
+  cue: [newfact: (CompletedProcedure +$tframe)]
+  precondition: (and (Objective $tframe $obj) #(Feature $task x)
+		     (ProcInstId $tframe $pid))
+  body: [do: (print "*  procedure_succeeded: %s" [$pid])]
+  }
+{defprocedure print_object_level_procedures_failed
+  cue: [newfact: (FailedProcedure +$tframe +$reason)]
+  precondition: (and (Objective $tframe $obj) #(Feature $task x)
+		     (ProcInstId $tframe $pid))
+  body: [do: (print "*  procedure_failed: %s %s" [$pid $reason])]
+  }
+
+
+{defprocedure mygoal_bad
+  cue: [do: (mygoal $x)]
+  precondition: (= $x "B")
+  body: []
+  features: [(mode "bad")]
+  roles: [(mygoalarg $x)]}
+
+{defprocedure mygoal_good
+  cue: [do: (mygoal $x)]
+  precondition: (= $x "G")
+  body: [seq: [do: (getSelfTask $task)]
+	      [forall: [$f] (ContextFeature $task $f)
+		       [do: (print "   feature: %s" [$f])]]]
+  features: [(mode "good")]
+  roles: [(mygoalarg $x)]}
+
+{defprocedure mygoal_neutral
+  cue: [do: (mygoal $x)]
+  precondition: (= $x "N")
+  body: []
+  features: [(mode "neutral")]
+  roles: [(mygoalarg $x)]}
+
+{defprocedure test_meta
+  cue: [do: (advice_test +$args)]
+  #precondition: (Ground $args)
+  body: [seq: 
+	  #[do: (print "Posting (mygoal $x) - no preference" [])]
+	  #[retractall: [$a1 $b1] (Mode $a1 $b1)]
+	  #[do: (mygoal $x)]
+	  #[do: (print "Succeeded (mygoal %s)" [$x])]
+
+	  [do: (print "Posting (mygoal $xg) - prefer good" [])]
+	  [retractall: [$a2 $b2] (Mode $a2 $b2)]
+	  [conclude: (Mode prefer "good")]
+	  [do: (mygoal $xg)]
+	  [do: (print "Succeeded (mygoal %s)" [$xg])]
+
+	  [do: (print "Posting (mygoal $xb) - prefer bad" [])]
+	  [retractall: [$a3 $b3] (Mode $a3 $b3)]
+	  [conclude: (Mode prefer "bad")]
+	  [do: (mygoal $xb)]
+	  [do: (print "Succeeded (mygoal %s)" [$xb])]
+
+	  [do: (print "Posting (mygoal $xg1) - avoid neutral, bad" [])]
+	  [retractall: [$a4 $b4] (Mode $a4 $b4)]
+	  [conclude: (and (Mode avoid "bad") (Mode avoid "neutral"))]
+	  [do: (mygoal $xg1)]
+	  [do: (print "Succeeded (mygoal %s)" [$xg1])]
+
+	  [do: (print "Posting (mygoal $xb1) - avoid neutral, good" [])]
+	  [retractall: [$a5 $b5] (Mode $a5 $b5)]
+	  [conclude: (and (Mode avoid "good") (Mode avoid "neutral"))]
+	  [do: (mygoal $xb1)]
+	  [do: (print "Succeeded (mygoal %s)" [$xb1])]
+
+	  ]
+  features: ["main_procedure"]
+  roles: [(command_line_args $args)]}
+
+{defadvice preferThing prefer $g (True)
+  $tf (and #(MyPr "TESTING prefer thing"[])
+	(Mode prefer $x) 
+	(Feature $tf (mode $x))
+	#(MyPr "FOUND preferred feature %s"[$x])
+	)
+  doc: "Some documentation"}
+(AdviceActive preferThing)
+## (Advice `preferThing prefer 
+## 	{pred [+$g +$tf] (and #(MyPr "TESTING prefer thing"[])
+## 			   (Mode prefer $x) 
+## 			   (Feature $tf (mode $x))
+## 					#(MyPr "FOUND preferred feature %s"[$x])
+## 			   )}
+## 	"Some documentation")
+## (AdviceActive `preferThing)
+
+(Advice `avoidThing avoid 
+	{pred [+$g +$tf] (and (Mode avoid $x)
+			 (Feature $tf (mode $x))
+			 #(MyPr "FOUND avoided feature %s"[$x])
+			 )}
+	"Other documentation")
+(AdviceActive `avoidThing)
+
+(Advice `inactiveAdvice avoid 
+	{pred [+$g +$tf] (and (Mode avoid $x)
+			 (Mode avoid $x)
+			 (Feature $tf (mode $x))
+			 )}
+	"inactive advice documentation")
+
+{defconsult always $event $tframes
+ (and (Ground $event) (Ground $tframes))}
+(ConsultActive always)
+
+{defprocedure Trivial_consultUser
+  cue: [do: (consultUser +$clabels +$event +$orig_tframes +$pref_tframes
+			  -$selected_tframe)]
+  precondition: (Ground $orig_tframes)
+  body: [seq:
+	  [do: (print "Consulting user about %s due to rules: %s"
+		      [$event $clabels])]
+	  [context: (Index 0 $selected_tframe $pref_tframes)]]}
+
+
+{defprocedure print_object_level_procedures
+  cue: [newfact: (StartedProcedureSynchronous +$tframe)]
+  precondition: (and (Objective $tframe $obj) #(Feature $task x)
+		     (ProcInstId $tframe $pid))
+  body: [do: (print "*  procedure_started with roles: %s %s" [$pid (roles $tframe)])]
+  }

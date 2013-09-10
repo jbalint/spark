@@ -1,0 +1,192 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 24 $" *#
+#* $Source: $ *#
+#*****************************************************************************#
+#*****************************************************************************#
+#* Copyright (c) 2004, SRI International.                                    *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+
+#   Quick instruction to use the logger:
+#1- Use the "Log" predicate as follows:
+#   (Log "action" action_name) to log an action.
+#   (Log "procedure" procedure_name) to log a procedure.
+#2- Start the tracer using startExecutionTracer which takes the output file location and a list of pairs as parameters.
+#3- Update/flush the output file using updateExecutionTracerFile.
+#4- Stop the tracer using stopExecutionTracer.
+
+
+importfrom: spark.lang.meta
+importfrom: spark.lang.list
+importfrom: spark.lang.event
+importfrom: spark.util.time
+importfrom: spark.io.file
+importfrom: spark.lang.string string formatString
+export: startExecutionTracer stopExecutionTracer updateExecutionTracerFile getLoggerLocation getLoggerFullPath getLoggerFilename Log Logger
+
+{defpredicate (Log $category $action)}
+{defpredicate (Logger $logger) imp: (determined "-")}
+{defaction (startExecutionTracer $filename $extra)}
+{defaction (stopExecutionTracer)}
+{defaction (updateExecutionTracerFile)}
+
+{defprocedure publishSparkProcedureStartedEvent
+  cue: [newfact: (StartedProcedure +$tframe)]
+  precondition: (and (Logger $logger) (ProcedureName $tframe $name) (Log "procedure" $name) (= $time (currentTime)))
+  body: [do: (publish_spark_procedure_started_event $tframe $name $time $logger)]
+} 
+
+{defprocedure publishSparkProcedureSucceededEvent
+  cue: [newfact: (CompletedProcedure +$tframe)]
+  precondition: (and (Logger $logger) (ProcedureName $tframe $name) (Log "procedure" $name) (= $time (currentTime)))
+  body: [do: (publish_spark_procedure_succeeded_event $tframe $name $time $logger)]
+}
+
+{defprocedure publishSparkProcedureFailedEvent
+  cue: [newfact: (FailedProcedure +$tframe +$reason)]
+  precondition: (and (Logger $logger) (ProcedureName $tframe $name) (Log "procedure" $name) (= $time (currentTime)))
+  body: [do: (publish_spark_procedure_failed_event $tframe $name $time $reason $logger)]
+}
+
+{defprocedure publishSparkTaskStartedEvent
+  cue: [newfact: (AdoptedTask +$task)]
+  precondition: (and (Logger $logger) (TaskName $task $name) (Log "action" $name) (= $time (currentTime)))
+  body: [do: (publish_spark_task_started_event $task $name $time $logger)]
+}
+
+{defprocedure publishSparkTaskSucceededEvent
+  cue: [newfact: (CompletedTask +$task)]
+  precondition: (and (Logger $logger) (TaskName $task $name) (Log "action" $name) (= $time (currentTime)))
+  body: [do: (publish_spark_task_succeeded_event $task $name $time $logger)]
+}
+
+{defprocedure publishSparkTaskFailedEvent
+  cue: [newfact: (FailedTask +$task +$reason)]
+  precondition: (and (Logger $logger) (TaskName $task $name) (Log "action" $name) (= $time (currentTime)))
+  body: [do: (publish_spark_task_failed_event $task $name $time $reason $logger)]
+}
+
+#============== 
+
+{defprocedure startExecutionTracerProcedure
+  cue: [do: (startExecutionTracer +$location +$extra)]
+  body: [select: (not (Logger $logger))
+          [seq:
+            [do: (createLogger $location $extra $logger1)]
+            [conclude: (Logger $logger1)]
+            [do: (print "Execution Tracer started...." [])]
+          ]
+          (True)
+            [do: (print "The logger has been already enabled." [])]
+        ]}
+
+{defprocedure stopExecutionTracerProcedure
+  cue: [do: (stopExecutionTracer)]
+  precondition: (Logger $logger)
+  body: [seq:
+          [retract: (Logger $logger)]
+          [wait: (not (or 
+                      (IsIntended "publishSparkProcedureStartedEvent")
+                      (IsIntended "publishSparkProcedureSucceededEvent")
+                      (IsIntended "publishSparkProcedureFailedEvent")
+                      (IsIntended "publishSparkTaskStartedEvent")
+                      (IsIntended "publishSparkTaskSucceededEvent")
+                      (IsIntended "publishSparkTaskFailedEvent")))
+            []
+          ]
+          [do: (stopLogger $logger)]
+          [do: (print "Execution Tracer stopped." [])]
+          ]}
+
+{defprocedure updateExecutionTracerFileProcedure
+  cue: [do: (updateExecutionTracerFile)]
+  precondition: (Logger $logger)
+  body: [do: (flushLogger $logger)]}
+
+{defaction (publish_spark_procedure_started_event $tframe $name $time $logger)
+  imp: (pyAction "A++++" (pyModRaw "spark.util.executiontracer" "publish_spark_procedure_started_event"))}
+{defaction (publish_spark_procedure_succeeded_event $tframe $name $time $logger)
+  imp: (pyAction "A++++" (pyModRaw "spark.util.executiontracer" "publish_spark_procedure_succeeded_event"))}
+{defaction (publish_spark_procedure_failed_event $tframe $name $time $reason $logger)
+  imp: (pyAction "A+++++" (pyModRaw "spark.util.executiontracer" "publish_spark_procedure_failed_event"))}
+{defaction (publish_spark_task_started_event $task $name $time $logger)
+  imp: (pyAction "A++++" (pyModRaw "spark.util.executiontracer" "publish_spark_task_started_event"))}
+{defaction (publish_spark_task_succeeded_event $task $name $time $logger)
+  imp: (pyAction "A++++" (pyModRaw "spark.util.executiontracer" "publish_spark_task_succeeded_event"))}
+{defaction (publish_spark_task_failed_event $task $name $time $reason $logger)
+  imp: (pyAction "A+++++" (pyModRaw "spark.util.executiontracer" "publish_spark_task_failed_event"))}
+
+{defaction (createLogger $location $extra $logger)
+  doc: "create an instance of Logger"
+  imp: (pyAction "++-" (pyModRaw "spark.util.executiontracer" "Logger"))}
+
+{defaction (stopLogger $logger)
+  doc: "stop the Logger"
+  imp: (pyAction "+" (pyMeth "stopLogger"))}
+
+{defaction (getLoggerFilename $logger $filename)
+  doc: "get the executiontracer filename"
+  imp: (pyAction "+-" (pyMeth "getFilename"))}
+
+{defaction (getLoggerLocation $logger $path)
+  doc: "get the executiontracer absolute pathname"
+  imp: (pyAction "+-" (pyMeth "getLocation"))}
+
+{defaction (getLoggerFullPath $logger $full)
+  doc: "get the executiontracer absolute path name and filename"
+  imp: (pyAction "+-" (pyMeth "getFullPath"))}
+
+{defaction (flushLogger $logger)
+  doc: "flush the Logger"
+  imp: (pyAction "+" (pyMeth "flushLogger"))}

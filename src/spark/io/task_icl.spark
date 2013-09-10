@@ -1,0 +1,65 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 24 $" *#
+#* $Source: /homedir/cvs/cvsroot/spark/src/spark/io/task_icl.spark,v $ *#
+#*****************************************************************************#
+importall: spark.io.oaa
+
+{defpredicate (TaskIcl0 $task $icl)
+  imp: (pyPredicate "A+-" (pyModRaw "spark.io.task_icl_aux" "task_icl_0"))}
+{defpredicate (TaskIcl $task $icl)
+  imp: (pyPredicate "A+-" (pyModRaw "spark.io.task_icl_aux" "task_icl"))}
+{defpredicate (TaskIclDone $task $icl)
+  imp: (pyPredicate "A+-" (pyModRaw "spark.io.task_icl_aux" "task_icl_done"))}
+
+{defpredicate (IntentionStructure $intention_structure)
+  doc: "Get an ICL representation of the current Intention Structure"
+  imp: (pyPredicate "A-" (pyModRaw "spark.io.task_icl_aux" "build_intention_icl"))}
+
+{defpredicate (NewObjective $taskicl $objective)
+  doc: "Given an ICL task statement, construct a new objective"
+  imp: (pyPredicate "+-" (pyModRaw "spark.io.task_icl_aux" "COEvent"))}
+
+{defaction (createObjective $statement_structure $obj_task)
+  doc: "create a new objective"
+  imp: (pyAction "+-" (pyModRaw "spark.io.task_icl_aux" "COEvent"))}
+
+{defaction (postObjective $objective)
+  doc: "Post a new objective"
+  imp: (pyAction "A+" (pyModRaw "spark.io.task_icl_aux" "postObjective"))}
+
+{defpredicate (ObjectiveResult $objective $result)
+  doc: "Test whether the objective has competed and what the result was"
+  imp: (pyPredicate "+-" (pyModRaw "spark.io.task_icl_aux" "objective_result"))}
+
+{defpredicate (AnchorsLabeled $anchors $labeled_anchors)
+  doc: "Add labels for anchors"
+  imp: (pyPredicate "+-" (pyModRaw "spark.io.task_icl_aux" "anchors_to_labeled"))}
+
+exportall:				# including spark.oaa symbols

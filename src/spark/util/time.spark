@@ -1,0 +1,123 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 237 $" *#
+#* $Source: /homedir/cvs/cvsroot/spark/src/spark/util/time.spark,v $ *#
+#*****************************************************************************#
+
+################################################################
+# Different representations of time
+#
+# As a number: floting point number of seconds since the epoch (start
+#   of 1970 UT under UNIX)
+#
+# The special string "NOW":
+#  Refers to the current (possibly simulated) time
+#
+# The special string "REAL":
+#  Refers to the current real time (regardless of simulated time parameters)
+#
+# As a string: 
+#  An iCalendar UT datetime of the form <yyyy><mm><dd>T<HH><MM><SS>Z
+#  An iCalendar local datetime of the form <yyyy><mm><dd>T<HH><MM><SS>
+#  Note that <SS> is allowed to have a fractional part
+#
+# The use of the following should be avoided:
+# As a list with 9 elements (ambiguous as to the timezone):
+#  four digit year
+#  month of year: 1-12
+#  day of month: 1-31
+#  hour of day: 0-23
+#  minute of hour: 0-59
+#  second of minute: 0-59
+#  day of week: 0-6 (Mon-Sun)
+#  day of year: 1-366
+#  is dst: 0, 1, or -1 (no, yes, guess based on date and local info)
+#
+# Note the use of UT rather than UTC. Python and Java routines to
+# convert between date-times and seconds past the epoch ignore leap
+# seconds.
+
+
+
+importfrom: spark.lang.string pyFormatString
+
+exportall:
+
+{deffunction (getTime $timeSpec)
+  doc: "Return the current time as a Float, $timeSpec is \"NOW\", \"REAL\", a local or UT iCalendar datetime string, or a Float."
+  imp: (pyFunction "+" (pyModRaw "spark.util.time_sim" "getTime"))}
+
+{deffunction (timeString $floatTime $mode)
+  doc: "Return the given time/duration as a string as acceptable by getTime. $mode is \"P\" for a duration, \"Z\" to return a UT/GMT time string, \"\" to return a local time, or a timezone designation string, such as \"+10:30\" to return the time for a specific timezone."
+  imp: (pyFunction "++" (pyModRaw "spark.util.time_sim" "timeString"))}
+
+{defaction (setTimeSpeed $simTime $simSpeed)
+  doc: "Set the simulated time and speed, $simTime is a time as accepted by getTime, $simSpeed is a speed-up factor, 1 for normal speed, 0 or less to keep the speed unchanged"
+  imp: (pyAction "++" (pyModRaw "spark.util.time_sim" "setTimeSpeed"))}
+
+{deffunction (currentTime)
+  doc: "return the current time in seconds" 
+  imp: (pyFunction "" (pyModRaw "spark.util.time_sim" "getTime"))}
+
+{deffunction (localTime)
+  doc: "return the current time as a list" 
+  imp: (pyFunction "" (pyModRaw "spark.util.time_sim" "localtime"))}
+
+{deffunction (time2list $time)
+  doc: "convert $time to a list" 
+  imp: (pyFunction "+" (pyModRaw "spark.util.time_sim" "localtime"))}
+
+{deffunction (currentTimeFormatted)
+  doc: "return the current (formatted) time"
+  imp: {fun [] (pyFormatString  "%02d:%02d:%02d" (sub (localTime) 3 6))}}
+
+{deffunction (currentDateFormatted)
+  doc: "return the current (formatted) date"
+  imp: {fun [] (pyFormatString "%04d/%02d/%02d" (sub (localTime) 0 3))}}
+
+{deffunction (currentICalDate)
+  doc: "return the current date and time in ICalDate format"
+  imp: {fun [] (pyFormatString  "%04d%02d%02dT%02d%02d%02d" (sub (localTime) 0 6))}}
+
+{deffunction (currentTimeDateFormatted)
+  doc: "return the current (formatted) date and time"
+  imp: (pyFunction "" (pyModRaw "spark.util.time_sim" "asctime"))}
+
+{defpredicate (IsLeap $year)
+  doc: "Returns True if year is a leap year, otherwise False"
+  imp: (pyPredicate "+" (pyModRaw "calendar" "isleap"))}
+
+{deffunction (weekDay $year $month $day)
+  doc: "Returns the day of the week (0 is Monday) for year (1970-...), month (1-12), day (1-31)."
+  imp: (pyFunction "+++" (pyModRaw "calendar" "weekday"))}
+
+
+
+
+

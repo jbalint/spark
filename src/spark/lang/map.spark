@@ -1,0 +1,21 @@
+package: spark.lang.map
+
+################################################################
+# Get components from a structre of the form (type key1: val1 key2: val2 ...)
+
+{deffunction (mapGet $map $key)
+  imp: (pyFunction "++" (pyModRaw "spark.lang.map" "mapGet"))}
+
+{defpredicate (MapGet +$map rest: $keysAndValues)
+  imp: (pyPredicate "+*?" (pyModRaw "spark.lang.map" "mapGetPred"))}
+
+{deffunction (mapChange $map rest: $keysAndValues)
+  imp: (pyFunction "+*+" (pyModRaw "spark.lang.map" "mapChange"))}
+
+{deffunction (mapKeys $map)
+  imp: (pyFunction "+" (pyModRaw "spark.lang.map" "mapKeys"))}
+
+{deffunction (mapGen rest: $keysAndValues)
+  imp: (pyFunction "*+" (pyModRaw "spark.lang.map" "mapGen"))}
+
+export: mapGet MapGet mapChange mapKeys mapGen

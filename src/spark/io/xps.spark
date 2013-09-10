@@ -1,0 +1,19 @@
+importfrom: spark.io.common AvailableServer
+#importfrom: spark.io.common ProvideService startServer stopServer
+
+export: XPS requestXPS
+
+{defconstant XPS}
+
+{defaction (startXPSServer)
+  imp: (pyAction "A" (pyModRaw "spark.io.xps" "startXPSServer"))}
+
+{defaction (stopXPSServer)
+  imp: (pyAction "A" (pyModRaw "spark.io.xps" "stopXPSServer"))}
+
+(AvailableServer XPS startXPSServer stopXPSServer)
+
+{defaction (requestXPS +$name +$parameters -$errnum -$result)
+  imp: (pyActionThread "++--" (pyModRaw "spark.io.xps" "requestXPS"))}
+
+

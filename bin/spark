@@ -1,0 +1,105 @@
+#!/bin/sh
+
+# ******************************************************
+# ***
+# *** Environment variables of interest
+# ***
+# *** SPARK_MODULES_DIR - where to find the spark modules
+# *** PYTHON_EXE - python executable
+# *** JYTHON_HOME - *required* location of jython libraries
+# ***
+# ******************************************************
+
+SPARK_BAT_HOME=`dirname $0`
+SPARK_BAT_NAME=`basename $0`
+SPARK_ROOT_DIR=`cd ${SPARK_BAT_HOME}/..;pwd`
+
+# ******************************************************
+# ** Construct python path by locating process models
+# ******************************************************
+
+SPARKRUN="${SPARK_ROOT_DIR}/src/sparkrun.py"
+
+PYTHONPATH="${PYTHONPATH}:${SPARK_ROOT_DIR}/src"
+
+# read in any external setting of PROCESS_HOME
+if test ! -z "${PROCESS_HOME}"
+then
+    PYTHONPATH="${PYTHONPATH}:${PROCESS_HOME}"
+fi
+
+# find all of the spark modules in the spark_modules dir
+SPARK_MODULES_DIR="${SPARK_MODULES:-$SPARK_ROOT_DIR/../spark_modules}"
+for v in "${SPARK_MODULES_DIR}"/*/src/spark
+do
+    #echo "TESTING " ${v}
+    if test -d "${v}"
+    then
+	#echo "ADDING " ${v}
+        PYTHONPATH="${PYTHONPATH}:${v}"
+    fi
+done
+
+#if test "${SPARK_BAT_NAME}" = "pspark"
+if test "$1" = "--cpython"
+then
+    # ******************************************************
+    # ** Construct remaining arguments for call to python
+    # ******************************************************
+
+    shift
+    export PYTHONPATH
+    echo "${PYTHON_EXE:-python}" "${SPARKRUN}" "$@"
+    exec "${PYTHON_EXE:-python}" "${SPARKRUN}" "$@"
+
+else
+    # ******************************************************
+    # ** Construct remaining arguments for call to java
+    # ******************************************************
+
+    JYTHON_HOME="${JYTHON_HOME:-"${SPARK_ROOT_DIR}/home"}"
+    if test ! -d "${JYTHON_HOME}"
+    then
+	echo "\$JYTHON_HOME does not point to a directory: ${JYTHON_HOME}"
+	exit 1
+    elif test ! -d "${JYTHON_HOME}/Lib"
+    then
+	echo "\$JYTHON_HOME/Lib does not point to a directory: ${JYTHON_HOME}/Lib"
+	exit 1
+    elif test ! -f "${JYTHON_HOME}/Lib/javapath.py"
+    then
+	echo "\$JYTHON_HOME/Lib does not have all the jython library files: ${JYTHON_HOME}/Lib"
+	exit 1
+    elif test ! -f "${JYTHON_HOME}/Lib/threading.py"
+    then
+	echo "\$JYTHON_HOME/Lib does not have the complete Python library: ${JYTHON_HOME}/Lib"
+	exit 1
+    fi
+    SPARK_LIB_DIR="${SPARK_ROOT_DIR}/lib"
+
+    EXT_DIRS="${SPARK_LIB_DIR}"
+
+    if test ! -z "${JYTHON_HOME}"
+    then
+        EXT_DIRS="${EXT_DIRS}:${JYTHON_HOME}"
+    fi
+
+    # Add certain CALO specific library directories
+    for subdir in oaa2.3.2 thirdparty_include
+    do
+        if test -d "${SPARK_LIB_DIR}/${subdir}"
+        then
+            EXT_DIRS="${EXT_DIRS}:${SPARK_LIB_DIR}/${subdir}"
+        fi
+    done
+
+    if test ! -z "${JAVA_HOME}"
+    then
+	JAVA="${JAVA_HOME}/bin/java"
+    else
+	JAVA=java
+    fi
+
+    #echo "${JAVA}" -Xss1024k -Xmx256M -Dpython.home="${JYTHON_HOME}" -Dpython.path="${PYTHONPATH}" -Djava.ext.dirs="${EXT_DIRS}"  org.python.util.jython "${SPARKRUN}" "$@"
+    exec "${JAVA}" -Xss1024k -Xmx256M -Dpython.home="${JYTHON_HOME}" -Dpython.path="${PYTHONPATH}" -Djava.ext.dirs="${EXT_DIRS}"  org.python.util.jython "${SPARKRUN}" "$@"
+fi

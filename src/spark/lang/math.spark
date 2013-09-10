@@ -1,0 +1,136 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 465 $" *#
+#* $Source: $ *#
+#*****************************************************************************#
+
+special: spark.lang.types
+importfrom: spark.lang.types integer float
+export: integer float
+
+## {deffunction (integer $x)
+##   doc: "Convert $x to an integer if it is not already one"
+##   imp: (pyFunction "+" (pyModRaw "__builtin__" "int"))}
+## 
+## {deffunction (float $x)
+##   doc: "Convert $x to an float if it is not already one"
+##   imp: (pyFunction "+" (pyModRaw "__builtin__" "float"))}
+
+{deffunction (acos $x)
+  doc: "Returns the arccosine of $x in radians."
+  imp: (pyFunction "+" (pyModRaw "math" "acos"))}
+
+## {deffunction (acosh $x)
+##   doc: "Returns the hyperbolic cosine of $x in radians."
+##   imp: (pyFunction "+" (pyModRaw "cmath" "acosh"))}
+
+{deffunction (asin $x)
+  doc: "Returns the arcsine of $x in radians."
+  imp: (pyFunction "+" (pyModRaw "math" "asin"))}
+
+## {deffunction (asinh $x)
+##   doc: "Returns the hyperbolic sine of $x in radians."
+##   imp: (pyFunction "+" (pyModRaw "cmath" "asinh"))}
+
+{deffunction (atan $x)
+  doc: "Returns the arctangent of $x in radians."
+  imp: (pyFunction "+" (pyModRaw "math" "atan"))}
+
+## {deffunction (atanh $x)
+##   doc: "Returns the hyperbolic tangent of $x in radians."
+##   imp: (pyFunction "+" (pyModRaw "cmath" "atanh"))}
+
+{deffunction (ceil $x)
+  doc: "Returns the lowest integer i such that i is greater than or equal to $x as a floating-point value."
+  imp: (pyFunction "+" (pyModRaw "math" "ceil"))}
+
+{deffunction (cos $x)
+  doc: "Returns the cosine of $x in radians."
+  imp: (pyFunction "+" (pyModRaw "math" "cos"))}
+
+{deffunction (cosh $x)
+  doc: "Returns the hyperbolic cosine of $x in radians."
+  imp: (pyFunction "+" (pyModRaw "math" "cosh"))}
+
+{deffunction (exp $x)
+  doc: "Returns e^$x"
+  imp: (pyFunction "+" (pyModRaw "math" "exp"))}
+
+{deffunction (fabs $x)
+  doc: "Returns the absolute value of $x."
+  imp: (pyFunction "+" (pyModRaw "math" "fabs"))}
+
+{deffunction (floor $x)
+  doc: "Returns the highest integer i such that i is less then or equal to $x as a floating-point value."
+  imp: (pyFunction "+" (pyModRaw "math" "floor"))}
+
+{deffunction (fmod $x $y)
+  doc: "Returns x%y."
+  imp: (pyFunction "++" (pyModRaw "math" "fmod"))}
+
+{deffunction (hypot $x $y)
+  doc: "Returns sqrt($x*$x + $y*$y)"
+  imp: (pyFunction "++" (pyModRaw "math" "hypot"))}
+
+{deffunction (log $x)
+  doc: "Returns the natural logarithm of $x."
+  imp: (pyFunction "+" (pyModRaw "math" "log"))}
+
+{deffunction (log10 $x)
+  doc: "Returns the base-10 logarithm of $x."
+  imp: (pyFunction "+" (pyModRaw "math" "log10"))}
+
+{deffunction (pow $x $y)
+  doc: "Returns $x^$y."
+  imp: (pyFunction "++" (pyModRaw "math" "pow"))}
+
+{deffunction (sin $x)
+  doc: "Returns the sine of $x in radians."
+  imp: (pyFunction "+" (pyModRaw "math" "sin"))}
+
+{deffunction (sinh $x)
+  doc: "Returns the hyperbolic sine of $x in radians."
+  imp: (pyFunction "+" (pyModRaw "math" "sinh"))}
+
+{deffunction (sqrt $x)
+  doc: "Returns the square root of $x."
+  imp: (pyFunction "+" (pyModRaw "math" "sqrt"))}
+
+{deffunction (tan $x)
+  doc: "Returns the tangent of $x."
+  imp: (pyFunction "+" (pyModRaw "math" "tan"))}
+
+{deffunction (tanh $x)
+  doc: "Returns the hyperbolic tangent of $x."
+  imp: (pyFunction "+" (pyModRaw "math" "tanh"))}
+
+{defpredicate (Between +$x +$y +$z)
+  imp: {pred [+$x +$y +$z] (and (< $x $y) (< $y $z))}}
+
+exportall:

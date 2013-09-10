@@ -1,0 +1,190 @@
+#*****************************************************************************#
+#* Copyright (c) 2004, SRI International.                                    *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+
+importfrom: spark.lang.string formatString
+
+export: execStart execStop executeTask
+
+export: |newtry:| Access
+
+{defaction (execStart)
+  doc: "Start servicing requests"
+  imp: {task [] []}}
+
+{defaction (execStop)
+  doc: "Stop servicing requests"
+  imp: {task [] []}}
+
+################################################################
+importfrom: spark.util.partial doActionSpec
+importfrom: spark.lang.types list
+importfrom: spark.lang.meta CurrentTFrame
+
+{declare |newtry:| modes: ["x=xxvx"]
+	 imp: "spark.io.exec.NewtryColon"
+	 combiner: "spark.internal.parse.combiner.COND_LIKE"}
+
+{defpredicate (Access $result +$object rest: +$accessors)
+  imp: (pyPredicate "-+*+" (pyModRaw "spark.io.exec" "access"))}
+
+################
+# Sever code for incoming task execution requests
+
+{defpredicate (ExecuteTask $requestType $listener $term)}
+
+{defprocedure _ExecuteTask
+  cue: [newfact: (ExecuteTask +$requestType +$listener +$term)]
+  body:
+  [select:
+    (= $requestType "fail")
+    [do: (callTaskFailed $listener $term)]
+    (= $requestType "d")
+    [newtry:
+      [seq:
+	[context: (CurrentTFrame $tframe)]
+	[conclude: (ObjectProperty $tframe "listener" $listener)]
+	[do: (doActionSpec $term $result)]
+	]
+      [do: (callTaskSucceed $listener $result)]
+      $failure
+      [seq:
+	[context: (= $failure (failure $fclass $ignore $farg))]
+	[select:
+	  (= $fclass "NoGoalResponseFailure")
+	  [do: (callTaskFailed $listener "No procedure matching task (input arguments possibly missing)")]
+	  (True)
+	  [do: (callTaskFailed $listener $farg)]
+	  ]
+	]
+      ]
+    (True)
+    [do: (callTaskFailed $listener "An invalid request type was specified for the task")]
+    ]}
+
+{defaction (callTaskSucceed $listener $result)
+  imp: (pyActionThread "++" (pyModRaw "spark.io.exec" "callTaskSucceeded"))}
+
+{defaction (callTaskFailed $listener $reason)
+  imp: (pyActionThread "++" (pyModRaw "spark.io.exec" "callTaskFailed"))}
+
+################
+# Client code for requesting external task execution
+
+{defaction (executeTask +$taskname +$arguments -$result)}
+{defprocedure _executeTask
+  cue: [do: (executeTask +$taskname +$arguments -$result)]
+  body:
+  [seq:
+    [context: (and (CurrentTFrame $tf) 
+		   (or (AncestorListener $tf $atf $listener)
+		       (= $listener "no listener")))]
+    [do: (startExecuteTask $listener $taskname $arguments $newlistener)]
+    [wait: (taskResult $newlistener $type $param)
+	   [seq:
+	     [retract: (taskResult $newlistener $type $param)]
+	     [select:
+	       (= $type "failure")
+	       [seq: [fail: $param]
+		     [set: $result []]# set $result to make SPARK happy
+		     ]
+	       (= $type "success")
+	       [context: (MergePartial $param $arguments $result)
+			 "Task %s succeeded, but TM was unable to merge:\n output bindings %s\n input bindings %s"
+			 $taskname $arguments $param]]]]]}
+
+{defaction (startExecuteTask +$listener +$taskname +$arguments -$newListener)
+  imp: (pyActionThread "A+++-" (pyModRaw "spark.io.exec" "startExecuteTask"))}
+
+{defpredicate (AncestorListener +$tframe -$ancestor -$newListener)
+  imp: (pyPredicate "A+--" (pyModRaw "spark.io.exec" "ancestorListener"))}
+
+{defpredicate (taskResult $listener $type $param)}
+
+
+# Ephemeral predicates - the listener can't actually add a fact, it can only trigger an AddFact event.
+
+{defpredicate (taskFailed $listener $reason)}
+
+{defprocedure _taskfailed
+  cue: [newfact: (taskFailed +$listener +$reason)]
+  body: [seq:
+	  [conclude: (taskResult $listener "failure" $reason)]
+	  [retract: (taskFailed $listener $reason)]] }
+
+{defpredicate (taskSucceeded $listener $values)}
+
+{defprocedure _taskSucceeded
+  cue: [newfact: (taskSucceeded +$listener +$values)]
+  body: [seq:
+	  [conclude: (taskResult $listener "success" $values)]
+	  [retract: (taskSucceeded $listener $values)]] }
+  
+{defpredicate (MergePartial +$partial1 +$partial2 $result)
+  doc: "Merge two partial sequences. If both sequences have an element in a given position, the value in $partial1is used. The sequence type (List/Structure) and functor (if Structure) comes from $partial1" 
+  imp: (pyPredicate "++-" (pyModRaw "spark.io.exec" "mergePartial"))}
+
+################################################################
+# report intermediate tasks
+
+{defprocedure reportIntermediateTask
+  cue: [synchronous: (StartedProcedure +$tframe)]
+  precondition: (and #(Print "StartedProcedure %r" $tframe)
+		     (Reportable $tframe $listener)
+		     #(Print "Reportable %r %r" $tframe $listener)
+		     )
+  body: [conclude: (ObjectProperty $tframe "listener" $listener)]}
+
+{defprocedure completedIntermediateTask
+  cue: [synchronous: (CompletedProcedure +$tframe)]
+  precondition: (and (ObjectProperty $tframe "listener" $listener)
+		     #(Print "Completed %r" $tframe)
+		     (IsLearnedProcedure $tframe)
+		     #(Print "IsLearned %r" $tframe)
+		     )
+  body: [seq:
+	  [do: (callTaskSucceed $listener (tframeFinalArguments $tframe))]
+	  [retract: (ObjectProperty $tframe "listener" $listener)]]}
+
+{defprocedure failedIntermediateTask
+  cue: [synchronous: (FailedProcedure +$tframe +$reason)]
+  precondition: (and (ObjectProperty $tframe "listener" $listener)
+		     (IsLearnedProcedure $tframe))
+  body: [seq:
+	  [context: (Access $errorString $reason `(getFailureValue) `(__str__))]
+	  [do: (callTaskFailed $listener $errorString)]
+	  [retract: (ObjectProperty $tframe "listener" $listener)]]}
+
+{deffunction (tframeFinalArguments +$tframe)
+  imp: (pyFunction "A+" (pyModRaw "spark.io.exec" "tframeFinalArguments"))}
+
+{defpredicate (Reportable +$tframe $listener)
+  imp: (pyPredicate "A+-" (pyModRaw "spark.io.exec" "reportable"))}
+
+{defpredicate (IsLearnedProcedure +$tframe)
+  imp: (pyPredicate "A+" (pyModRaw "spark.io.exec" "isLearnedProcedure"))}

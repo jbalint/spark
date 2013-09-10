@@ -1,0 +1,20 @@
+
+{defaction (createEmailer $host $port $smtpuser $smtppassword $myemail)
+  doc: ""
+  imp: (pyAction "+++++" (pyModRaw "spark.net.emailer" "Emailer"))
+}
+
+{defaction (sendEmail $to $cc $bcc $subject $body $attachment)
+  doc: "Send an email"
+  imp: (pyAction "++++++" (pyModRaw "spark.net.emailer" "send_email"))}
+
+{defaction (sampleEmail)
+  doc: "A sample email"
+  imp: {task [] 
+    [seq:
+      [do: (createEmailer "mail.gmx.net" 25 "shahins@gmx.net" "" "shahins@gmx.net")] 
+      [do: (sendEmail ["haftad@hotmail.com"] [] [] "Testing" "sample email" [])]
+    ]}
+}
+
+exportall:

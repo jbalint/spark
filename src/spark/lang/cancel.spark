@@ -1,0 +1,107 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 24 $" *#
+#* $Source: /homedir/cvs/cvsroot/spark/src/spark/lang/cancel.spark,v $ *#
+#*****************************************************************************#
+importfrom: spark.lang.event
+importfrom: spark.lang.list
+importfrom: spark.lang.advice intendTFrame
+
+export: cancelAndTryDifferent
+
+# agent.replace_tframe($oldtframe, $newtframe) substitutes tframes in the intention structure
+{defaction (replaceTFrame $oldtframe $newtframe)
+  imp: (pyAction "A++" (pyMeth "replace_tframe"))}
+
+{defaction (cancelAndTryDifferent $pi)
+  doc: "Cancels the procedure instance $pi and arranges for an instance 
+of a different procedure to be intended."
+  imp: {task [$pi]
+         [seq:
+	   [context: (Ground $pi)]
+           [conclude: (ObjectProperty $pi `retry `different)]
+           [do: (interruptProcedureInstance $pi)]]}}
+
+{defaction (getEventTFrames $event $tframes)
+  doc: "Constructs a list of tframes for the given event"
+  imp: (pyAction "A+-" (pyModRaw "spark.lang.cancel" "computeEventTFrames"))}
+
+{defaction (performSOAPIProcessing $event $tframes $selectedtframe)
+  doc: "Does SOAPI processing on a list of $tframes to select one. Will fail if $tframes is empty and there are no meta-level procedures to handle it."
+  imp: (pyAction "A++-" (pyModRaw "spark.lang.cancel" "do_soapi_chain"))}
+
+{defprocedure _retryOnCancel
+  cue: [synchronous: (FailedProcedure $pi $reason)]
+  precondition: (and (ObjectProperty $pi `retry $retryMode)
+                     (Ground $reason))
+  body:
+  [seq:
+    [retract: (ObjectProperty $pi `retry $retryMode)]
+    [context: (PITriggeringEvent $pi $task)]
+    [context: (PIProcedure $pi $proc)]
+    [do: (getEventTFrames $task $tframes)]
+    [set: $filtered # collect pi's that are not from the same proc as $pi
+          (solutionspat [$tf] (and (Member $tf $tframes)
+                                   (not (PIProcedure $tf $proc)))
+                        $tf)]
+    [try: [do: (performSOAPIProcessing $task $filtered $selectedtf)]
+          #[conclude: (CurrentlyIntended $selectedtf)]
+          [do: (replaceTFrame $pi $selectedtf)]
+          []
+          [do: (print "Warning- no replacement procedure instance available for %s" [$pi] )]]]}
+
+# Testing
+# first [do: (top)]
+# this will hang in _Main1
+# find the relevant (i.e., highest numbered) procedure instance using (CurrentlyIntended $pi)
+# call [do: (cancelAndTryDifferent (idObject <pi-number>))]
+# the other procedures should start
+
+{defaction (top)}
+{defprocedure _Top
+  cue: [do: (top)]
+  precondition: (True)
+  body: [do: (main)]}
+
+{defaction (main)}
+
+{defprocedure _Main1
+  cue: [do: (main)]
+  precondition: (True)
+  body:
+  [seq: [do: (print "_Main1 Waiting" [])]
+        [wait: (False) []]]}
+
+{defprocedure _Main2
+  cue: [do: (main)]
+  precondition: (True)
+  body:
+  [seq: [do: (print "_Main2 Waiting" [])]
+        [wait: (False) []]]}
+

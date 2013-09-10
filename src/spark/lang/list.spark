@@ -1,0 +1,201 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 196 $" *#
+#* $Source: /homedir/cvs/cvsroot/spark/src/spark/lang/list.spark,v $ *#
+#*****************************************************************************#
+module: spark.lang.list
+
+{deffunction (sort $x)
+  doc: "Return a sorted copy of list $x."
+  properties: [(static)]
+  imp: (pyFunction "+" (pyModRaw "spark.lang.list" "sort_spark_list"))}
+
+{deffunction (customSort $x $fun)
+  doc: "Return a sorted copy of list $x using the comparison function $fun.\n $fun should be given as a string defining a lambda expression."
+  properties: [(static)]
+  imp: (pyFunction "++" (pyModRaw "spark.lang.list" "custom_sort_list"))}
+
+{defaction (printListElements $args)
+  doc: "printing of lists"
+  #static: true 
+  imp: (pyAction "+" (pyModRaw "spark.lang.list" "print_list_elements"))}
+
+{defpredicate (Empty $list)
+  doc: "determine whether list is empty"
+  #static: true 
+  # Note: if we extend Empty to mutable objects, it will be dynamic
+  properties: [(static)]
+  imp: (pyPredicate "+" (pyModRaw "spark.lang.list" "empty_list"))}
+
+{defpredicate (Member $element $list)
+  doc: "membership of list"
+  #static: true 
+  # Note: if we extend to mutable objects, this will be dynamic
+  properties: [(static)]
+  imp: (pyPredicateSeq "-+" (pyModRaw "spark.lang.list" "list_elements"))}
+
+{deffunction (first $list)
+  doc: "return the first element of the list"
+  properties: [(static)]
+  imp: (pyFunction "+" (pyModRaw "spark.lang.list" "first"))}
+
+{deffunction (rest $list)
+  doc: "return all but the first element of the list"
+  properties: [(static)]
+  imp: (pyFunction "+" (pyModRaw "spark.lang.list" "rest"))}
+
+{deffunction (second $list)
+  doc: "return the second element of the list"
+  properties: [(static)]
+  imp: (pyFunction "+" (pyModRaw "spark.lang.list" "second"))}
+
+{deffunction (third $list)
+  doc: "return the third element of the list"
+  properties: [(static)]
+  imp: (pyFunction "+" (pyModRaw "spark.lang.list" "third"))}
+
+{deffunction (last $list)
+  doc: "return the last element of the list"
+  properties: [(static)]
+  imp: (pyFunction "+" (pyModRaw "spark.lang.list" "last"))}
+
+{deffunction (reduce $fun $list)
+  doc: "apply function $fun pairwise to $list to reduce it to a single value"
+  properties: [(dynamic)]		# depends upon the value of $fun
+  imp: (pyFunction "A++" (pyModRaw "spark.lang.list" "reduce"))}
+
+{deffunction (mapCall $fun $list rest: $lists)
+  doc: "Equivalent of lisp mapcar"
+  properties: [(dynamic)]		# depends upon the value of $fun
+  imp: (pyFunction "A+++*" (pyModRaw "spark.lang.list" "map_call"))}
+
+{deffunction (zip rest: $lists)
+  doc: "combine lists [1 2 3] [4 5 6] -> [[1 4] [2 5] [3 6]]"
+  properties: [(static)]
+  imp: (pyFunction "+*" (pyModRaw "spark.lang.list" "sparkZip"))}
+
+{deffunction (zip* $lists)
+  doc: "zip the elements of the argument: [[1 2 3] [4 5 6]] -> [[1 4] [2 5] [3 6]]. Note this function is its own inverse."
+  properties: [(static)]
+  imp: (pyFunction "+*" (pyModRaw "spark.lang.list" "sparkZipStar"))}
+
+{deffunction (keySort $list $function)
+  properties: [(dynamic)]		# depends upon the value of $fun
+  imp: {fun [$list $function]
+	 (mapCall {fun [$x] (index 1 $x)}
+		  (sort (solutionspat [$key $elt] (and (Member $elt $list) (= $key (applyfun $function $elt))) [$key $elt])))}}
+
+{deffunction (flattenList $x)
+  doc: "Turn list of list into a list"
+  imp: (pyFunction "+" (pyModRaw "spark.lang.list" "flatten_List"))}
+
+{deffunction (removeDuplicates $x)
+  doc: "Remove duplicates elements from list $x"
+  imp: (pyFunction "+" (pyModRaw "spark.lang.list" "remove_Duplicates"))}
+
+{deffunction (addElementToList $x $l)
+  doc: "Add element $x to list $l"
+  imp: (pyFunction "++" (pyModRaw "spark.lang.list" "add_to_list"))}
+
+{deffunction (removeElementFromList $x $l)
+  doc: "Remove element $x from list $l"
+  imp: (pyFunction "++" (pyModRaw "spark.lang.list" "remove_from_list"))}
+
+{deffunction (removeListFromList $x $l)
+  doc: "Remove the elements of list $x from list $l"
+  imp: (pyFunction "++" (pyModRaw "spark.lang.list" "remove_list_from_list"))}
+
+################################################################
+# Treating lists as sets
+
+{defpredicate (HasSubset $superset $subset)
+  doc: "Test/generate subset $subset of $superset"
+  properties: [(static)]
+  imp: (pyPredicate "+?" (pyModRaw "spark.lang.list" "subset"))}
+
+{defpredicate (Intersection $set1 $set2 $intersection)
+  doc: "Compute the intersection of two sets"
+  properties: [(static)]
+  imp: (pyPredicate "++-" (pyModRaw "spark.lang.list" "intersection"))}
+
+{deffunction (intersection $set1 $set2)
+  doc: "Compute the intersection of two sets"
+  properties: [(static)]
+  imp: (pyFunction "++" (pyModRaw "spark.lang.list" "intersection"))}
+
+{defpredicate (Union $set1 $set2 $union)
+  doc: "Compute the union of two sets"
+  properties: [(static)]
+  imp: (pyPredicate "++-" (pyModRaw "spark.lang.list" "union"))}
+
+{deffunction (union $set1 $set2)
+  doc: "Compute the union of two sets"
+  properties: [(static)]
+  imp: (pyFunction "++" (pyModRaw "spark.lang.list" "union"))}
+
+
+{defaction (makeAccumulator -$acc)
+  doc: "Construct an empty accumulator"
+  imp: (pyAction "-" (pyModRaw "spark.lang.list" "Accumulator"))}
+
+{defaction (initAccumulator +$initialSequence -$acc)
+  doc: "Construct an initialized accumulator"
+  imp: (pyAction "+-" (pyModRaw "spark.lang.list" "Accumulator"))}
+
+{defaction (accAppend +$accumulator +$value)
+  doc: "Add $value to the end of the $accumulator"
+  imp: (pyAction "++" (pyModRaw "spark.lang.list" "accumulator_append"))}
+
+{deffunction (accValues $accumulator)
+  doc: "Return the current elements of the accumulator"
+  properties: [(dynamic)]
+  imp: (pyFunction "+" (pyModRaw "spark.lang.list" "accumulator_values"))}
+
+{defpredicate (AccKeyValue +$accumulator $key $value)
+  doc: "Test, set (via conclude:), or remove (via retract:/retractall:) the value associated with $key in $accumulator"
+  imp: (pyModRaw "spark.lang.list" "AccumulatorKeyValue")}
+
+{deffunction (listify $eltOrList)
+  doc: "If the argument is a list, return it, otherwise return a list with the argument as the sole element"
+  properties: [(static)]
+  imp: (pyFunction "+" (pyModRaw "spark.lang.list" "listify"))}
+
+{deffunction (makeList rest: $values)
+  doc: "(makeList ...) is equivalent to [...] - can be used in both directions"
+  imp: (pyModRaw "spark.lang.list" "ListFun")}
+
+{deffunction (list* rest: $values)
+  doc: "(list* $elt1 ... $eltn $list) is equivalent to (+ [$elt1 ... $eltn] $list), but can be used in both directions"
+  imp: (pyModRaw "spark.lang.list" "ListStar")}
+
+{deffunction (*list rest: $values)
+  doc: "(*list $list $elt1 ... $eltn) is equivalent to (+ $list [$elt1 ... $eltn]), but can be used in both directions"
+  imp: (pyModRaw "spark.lang.list" "StarList")}
+
+exportall:

@@ -1,0 +1,54 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 24 $" *#
+#* $Source: /homedir/cvs/cvsroot/spark/src/spark/lang/bz.spark,v $ *#
+#*****************************************************************************#
+
+module: spark.lang.bz
+
+exportall:
+
+{defpredicate (PartialBZ +$partial $bindings $zexprs)
+  imp: (pyPredicateSeq "???" (pyModRaw "spark.lang.bz" "partialBZ"))}
+
+{defaction (applyActToBZ +$action +$bindings +$zexprs)
+  doc: "Apply the given action (symbol or task closure) to the given bindings/zexprs. Values are returned through modifications to the bindings."
+  imp: (pyModRaw "spark.lang.bz" "ApplyActToBZ")}
+
+{defpredicate (ApplyPredToBZ +$pred +$bindings +$zexprs)
+  doc: "Apply the given predicate (symbol or pred closure) to the given bindings/zexprs. Values are returned through modifications to the bindings and have to be extracted separately for each solution."
+  imp: (pyModRaw "spark.lang.bz" "ApplyPredToBZ")}
+
+{deffunction (applyFunToBZ +$action +$bindings +$zexprs)
+  doc: "Apply the given function (symbol or fun closure) to the given bindings/zexprs."
+  imp: (pyModRaw "spark.lang.bz" "ApplyFunToBZ")}
+
+{deffunction (termsEvalEnd $bindings $zexprs)
+  doc: "Return a List of the final bindings for $zexprs"
+  imp: (pyFunction "A++" (pyModRaw "spark.lang.bz" "termsEvalEnd"))}

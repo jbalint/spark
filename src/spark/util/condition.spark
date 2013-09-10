@@ -1,0 +1,21 @@
+
+# To use these constructs you must declare spark.util.condition to be
+# "special" for importing:
+#
+# special: spark.util.condition
+# importfrom: spark.util.condition If IfMultiple
+
+{declare IfOnce modes: ["s=sss" "u=suu"]
+	 doc: "If there is at least one solution to the first condition, use the bindings of the first solution and then test the second condition. If not, test the third condition. Thus (IfOnce (Member $x [0 1]) (= $x 1) (= $x 2)) will have no solutions."
+	 properties: [(static)]
+	 imp: "spark.util.condition.IfOnce"
+	 combiner: "spark.internal.parse.combiner.COND_LIKE"}
+
+{declare If modes: ["s=sss" "u=suu"]
+	 doc: "If there is at least one solution to the first condition, then find solutions to the first condition and the second conditions, finding more solutions to the first condition as necessary. If there is no solution to the first condition, test the third condition. Thus (If (Member $x [0 1]) (= $x 1) (= $x 2)) will have one solution, $x=1."
+	 properties: [(static)]
+	 imp: "spark.util.condition.IfMultiple"
+	 combiner: "spark.internal.parse.combiner.COND_LIKE"}
+
+export: If IfOnce
+

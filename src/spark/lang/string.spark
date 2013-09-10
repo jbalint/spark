@@ -1,0 +1,105 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+
+exportall:
+
+{deffunction (string $x)
+  doc: "Convert $x to string"
+  imp: (pyFunction "+" (pyModRaw "spark.lang.string" "to_string"))
+}
+
+{deffunction (formatString $msg $args)
+  doc: "puts args into formatted string"
+  imp: (pyFunction "++" (pyModRaw "spark.lang.string" "format_string"))}
+
+{deffunction (pyFormatString $msg $args)
+  doc: "Use python's % operator to format the string"
+  imp: (pyFunction "++" (pyModRaw "spark.lang.string" "python_format_string"))}
+
+{defpredicate (StringStartsWith $string $prefix)
+ imp: (pyPredicate "++" (pyModRaw "spark.lang.string" "string_starts_with"))
+}
+
+{defpredicate (StringEndsWith $string $suffix)
+ imp: (pyPredicate "++" (pyModRaw "spark.lang.string" "string_ends_with"))
+}
+
+{deffunction (chop $s $char)
+  doc: "strip char from beginning & end of string" 
+  imp: (pyFunction "++" (pyModRaw "spark.lang.string" "chop_char"))}
+
+{deffunction (substringIndex $string $sub)
+  doc: "find substrings" 
+  imp: (pyFunction "++" (pyModRaw "spark.lang.string" "substringIndex"))}
+
+{defpredicate (Contains $string $sub)
+  doc: "find substrings" 
+  imp: (pyPredicate "++" (pyModRaw "spark.lang.string" "contains"))}
+
+{deffunction (join $strings $connective)
+  doc: "Concatenate strings in $strings using $connective as a separator. Note that the order of the arguments was previously reversed. To cater for this, join will still work with the arguments reversed, but will print a warning message."
+  imp: (pyFunction "++" (pyModRaw "spark.lang.string" "stringJoin"))}
+
+{deffunction (split $string $separator)
+  doc: "Split apart $string at every point that $separator occurs returning a list of strings"
+  imp: (pyFunction "++" (pyModRaw "spark.lang.string" "stringSplit"))}
+
+#{deffunction (stringListConcat $list)
+#  doc: "puts list elements into a string"
+#  imp: {fun [$list] (join " " $list)}}
+
+#{deffunction (stringListConcatNoSpaces $list)
+#  doc: "puts list elements into a string with no space in between."
+#  imp: {fun [$list] (join "" $list)}}
+
+{deffunction (lowercase $str)
+  doc: "convert the string to lowercase"
+  imp: (pyFunction "+" (pyMeth "lower"))}
+
+{deffunction (uppercase $str)
+  doc: "convert the string to uppercase"
+  imp: (pyFunction "+" (pyMeth "upper"))}
+
+
+{defaction (_testString $args)}
+{defprocedure _TestString
+ precondition: (Ground $args)
+ cue: [do: (_testString $args)]
+ body:
+ [seq:
+   [do: (print (formatString "Formatted String: One: %s, Two: %s" [1 2]) [])]
+   [context: (StringStartsWith "my.string" "my.")]
+   [do: (print "my.string does start with my." [])]
+   [try: [context: (StringStartsWith "my.string" "my.stringer")] [fail: "string starts with failure"]
+         [] [do: (print "my.string does not start with my.stringer" [])]]
+   [try: [context: (StringStartsWith "blah" "")] [do: (print "blah does start with the empty string"[])]
+         [] [fail: "FAIL: blah does not start with the empty string"]]
+ ]
+}
+

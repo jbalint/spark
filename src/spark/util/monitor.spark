@@ -1,0 +1,97 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+importfrom: spark.lang.list Member
+export: MONITOR sleepInterval syncMONITOR
+
+
+{defaction (applyproc +$proc rest: $args)
+  doc: "Apply the given action to the arguments"
+  imp: (pyModRaw "spark.lang.builtin" "ApplyProc")}
+
+{defaction (MONITOR)
+  doc: "Assistance Pattern procedures have [do: (MONITOR)] as their cue"}
+
+{deffunction (sleepInterval $seconds)
+  doc: "Property functor for MONITOR procedures - specifies the interval between tests of activation of the procedure. The default is 60 seconds."}
+
+{defaction (syncMONITOR)
+  doc: "Action to start monitoring any MONITOR procedures that are not currently monitored."}
+
+{defprocedure _syncMONITOR
+  cue: [do: (syncMONITOR)]
+  body: [forall: [$proc $procname]
+		 (and (Do MONITOR $proc $procname) (not (_Monitoring $procname)))
+		 [conclude: (_Monitoring $procname)]]}
+		 
+{defpredicate (_Monitoring $procname)
+  doc: "Is the procedure named $procname being monitored."}
+
+{defprocedure _MonitoringProcedure
+  cue: [newfact: (_Monitoring +$procname)]
+  body: [try:
+	  [seq:
+	    [context: (Properties $procname $props)]
+	    [context: (or (Member (sleepInterval $sleepInterval) $props)
+			  (= $sleepInterval 60))]
+	    [while: [$proc] (and (_Monitoring $procname)
+				 (Do MONITOR $proc $procname))
+		    [try:
+		      [do: (applyproc $proc)]
+		      []#[do: (print "Procedure %s succeeded" [$procname])]
+		      []#[do: (print "Sleeping procedure %s" [$procname])]
+		      [do: (sleep $sleepInterval)]]]]
+	  [retract: (_Monitoring $procname)]
+	  []
+	  [retract: (_Monitoring $procname)]]}
+
+################################################################
+
+## # The following is a simple example of a MONITOR
+
+## # Every 5 seconds it checks to see if (Go $x) is true, if it is, then
+## # the procedure body is activated.
+
+## # Load this procedure,
+## # then run [do: (syncMONITOR)]
+## # then run [conclude: (and (Go 1) (Go 2))]
+## # After at most 5 seconds, it should display
+## # "Removing (Go 2)" and "Removing (Go 1)".
+
+## {defprocedure _test1
+##   cue: [do: (MONITOR)]
+##   precondition: (Go $x)
+##   body: [seq:
+## 	  [do: (print "Removing (Go %s)" [$x])]
+## 	  [retract: (Go $x)]]
+##   properties: [(sleepInterval 5)]}
+
+## {defpredicate (Go $x)}
+ 
+	 
+  

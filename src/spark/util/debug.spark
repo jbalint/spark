@@ -1,0 +1,16 @@
+
+
+{defaction (showVar $module $variable)
+  doc: "Show the value of a python variable location in a python module"
+  imp: (pyAction "++" (pyMod "spark.util.debug" "showVariable"))}
+
+{defaction (showObj $obj)
+  doc: "Show a python object"
+  imp: (pyAction "+" (pyMod "spark.util.debug" "showObject"))}
+
+# Test and set tracing
+{defpredicate (Tracing)
+  doc: "Predicate which reflects/changes SPARK tracing"
+  imp: (pyModRaw "spark.util.debug" "TracingPredicate")}
+
+exportall:

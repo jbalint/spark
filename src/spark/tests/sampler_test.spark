@@ -1,0 +1,439 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 367 $" *#
+#* $Source: $ *#
+#*****************************************************************************#
+#*****************************************************************************#
+#* Copyright (C) 2004 SRI International.  All rights reserved.               *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions        *#
+#* are met:                                                                  *#
+#* 1. Redistributions of source code must retain the above copyright         *#
+#*    notice, this list of conditions and the following disclaimer.          *#
+#* 2. Redistributions in binary form must reproduce the above copyright      *#
+#*    notice, this list of conditions and the following disclaimer in the    *#
+#*    documentation and/or other materials provided with the distribution.   *#
+#* 3. The name of the author may not be used to endorse or promote products  *#
+#*    derived from this software without specific prior written permission.  *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR        *#
+#* IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED            *#
+#* WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE    *#
+#* DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,        *#
+#* INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES        *#
+#* (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR        *#
+#* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)        *#
+#* HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,       *#
+#* STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING     *#
+#* IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE        *#
+#* POSSIBILITY OF SUCH DAMAGE.                                               *#
+#*****************************************************************************#
+
+#some of these imports are just to make the sampler tests have these tasks/functions/predicates
+#loaded for use on debug console
+importfrom: spark.io.oaa
+importfrom: spark.tests.sampler
+importfrom: spark.tests.unit
+importfrom: spark.tests.settings
+
+{defaction (proc1test)}
+{defprocedure _Basic_Procedure_1_Test
+ cue: [do: (proc1test)]
+ precondition: (True)
+ body:
+ [seq:
+   [set: $task {task [] [do: (proc1)]}]
+   [do: (AssertSucceed $task)]
+   
+   [set: $pred {pred [$x] (procdone $x)}]
+   [do: (AssertPred $pred "proc1")]
+   ]
+}
+
+{defaction (selectproc1test)}
+{defprocedure _Select_Procedure_1_Test
+ cue: [do: (selectproc1test)]
+ precondition: (True)
+ body:
+ [seq:
+   [set: $task {task [] [do: (selectproc1)]}]
+   [do: (AssertSucceed $task)]
+   [set: $pred {pred [$x] (procdone $x)}]
+   [do: (AssertPred $pred "selectproc1")]
+   ]
+}
+{defaction (parallelproc1test)}
+{defprocedure _Parallel_Procedure_Test
+ cue: [do: (parallelproc1test)]
+ precondition: (True)
+ body:
+ [seq:
+   [retractall: [$x] (waymarker $x)]
+   
+   [set: $task {task [] [do: (parallelproc1)]}]
+   [do: (AssertSucceed $task)]
+   
+   [set: $pred {pred [$x] (procdone $x)}]
+   [do: (AssertPred $pred "parallelproc1")]
+   
+   [set: $wmpred {pred [$x] (waymarker $x)}]
+   [do: (AssertPred $wmpred 1)]
+   [do: (AssertPred $wmpred 2)]
+   [do: (AssertPred $wmpred 3)]
+   [do: (AssertPred $wmpred 4)]
+  ]
+}
+
+{defaction (seqproc1test)}
+{defprocedure _Sequence_procedure_1_Test
+ cue: [do: (seqproc1test)]
+ precondition: (True)
+ body:
+ [seq:
+   [retractall: [$x] (waymarker $x)]
+
+   [set: $task {task [] [do: (seqproc1)]}]
+   [do: (AssertSucceed $task)]
+   
+   [set: $pred {pred [$x] (procdone $x)}]
+   [do: (AssertPred $pred "seqproc1")]
+   [set: $wmpred {pred [$x] (waymarker $x)}]
+   [do: (AssertPred $wmpred 1)]
+   [do: (AssertPred $wmpred 2)]
+   [do: (AssertPred $wmpred 3)]
+   [do: (AssertPred $wmpred 4)]
+   ]
+}
+
+{defaction (deepproc1test)}
+{defprocedure _Deep_Proc
+ cue: [do: (deepproc1test)]
+ precondition: (True)
+ body:
+ [seq:
+   [set: $task {task [] [do: (deepproc1)]}]
+   [do: (AssertSucceed $task)]
+   [set: $pred {pred [$x] (procdone $x)}]
+   [do: (AssertPred $pred "deepproc1")]
+ ]
+}
+
+{defaction (contextproc1test)}
+{defprocedure _Context_Proc
+ cue: [do: (contextproc1test)]
+ precondition: (True)
+ body:
+ [seq: 
+  [set: $task {task [] [do: (contextproc1)]}]
+  [do: (AssertSucceed $task)]
+  [set: $pred {pred [$x] (procdone $x)}]
+  [do: (AssertPred $pred "contextproc1")]
+]
+}
+
+{defaction (forallproc1test)}
+{defpredicate (foralltest $num)}
+{defprocedure _Forall_procedure_1
+ cue: [do: (forallproc1test)]
+ precondition: (True)
+ 
+ body:
+ [seq:
+   [retractall: [$x] (waymarker $x)]
+   [set: $task {task [] [do: (forallproc1)]}]
+   [do: (AssertSucceed $task)]
+   [set: $pred {pred [$x] (procdone $x)}]
+   [do: (AssertPred $pred "forallproc1")]
+  
+   [set: $wmpred {pred [$x] (waymarker $x)}]
+   [do: (AssertPred $wmpred 1)]
+   [do: (AssertPred $wmpred 2)]
+   [do: (AssertPred $wmpred 3)]
+   [do: (AssertPred $wmpred 4)]
+  ]
+}
+
+{defaction (forallpproc1test)}
+{defpredicate (forallptest $num)}
+{defprocedure _For_all_parallel_procedure_1
+ cue: [do: (forallpproc1test)]
+ precondition: (True)
+ body:
+ [seq:
+   [retractall: [$x] (waymarker $x)]
+   [set: $task {task [] [do: (forallpproc1)]}]
+   [do: (AssertSucceed $task)]
+   [set: $pred {pred [$x] (procdone $x)}]
+   [do: (AssertPred $pred "forallpproc1")]
+
+   [set: $wmpred {pred [$x] (waymarker $x)}]
+   [do: (AssertPred $wmpred 1)]
+   [do: (AssertPred $wmpred 2)]
+   [do: (AssertPred $wmpred 3)]
+   [do: (AssertPred $wmpred 4)]
+
+ ]
+}
+
+{defaction (forallpproc2test)}
+{defpredicate (forallptest2 $num)}
+{defpredicate (forallptest2_proceed1)}
+{defpredicate (forallptest2_proceed4)}
+{defprocedure _For_all_parallel_procedure_2
+ cue: [do: (forallpproc2test)]
+ precondition: (True)
+ body:
+ [seq:
+   [retractall: [$x] (waymarker $x)]
+   [set: $task {task [] [do: (forallpproc2)]}]
+   [do: (AssertSucceed $task)]
+   [set: $pred {pred [$x] (procdone $x)}]
+   [do: (AssertPred $pred "forallpproc2")]
+  
+   [set: $wmpred {pred [$x] (waymarker $x)}]
+   [do: (AssertPred $wmpred 1)]
+   [do: (AssertPred $wmpred 2)]
+   [do: (AssertPred $wmpred 3)]
+   [do: (AssertPred $wmpred 4)]
+   [do: (AssertPred $wmpred 5)]
+ ]
+}
+
+{defaction (trytest)
+  imp: {task [] 
+	 [seq:
+	   [do: (AssertSucceed {task [] [tryexcept: [fail: "reason"] [] $x [do: (print "tryexcept correctly caught failure %r" [$x])]]})]
+	   [do: (AssertFail {task [] [tryexcept: [fail: "reason"] []]})]
+	   [do: (AssertSucceed {task [] [tryexcept: [] [] $x [do: (print "tryexcept incorrectly found failure %r" [$x])]]})]
+	   ]}}
+
+
+{defpredicate (SamplerFailed $true)}
+
+{defaction (sampler_unit_tests $foo)}
+{defprocedure _Run_All_Sampler_Unit_Tests
+  cue: [do: (sampler_unit_tests $foo)]
+  precondition: (Ground $foo)
+  body:
+    [seq:
+    [retractall: [$x] (SamplerFailed $x)]
+    [set: $p1_tests {task [] [do: (proc1test)] }]
+    [try: [do: (AssertSucceed $p1_tests)] [succeed: ]
+          [] [do: (print "SAMPLER FAILURE: ***PROC1 TEST FAILED***" [])
+              conclude: (SamplerFailed "true")]]
+    [do: (print "-----------" [])]
+    [set: $sp1_tests {task [] [do: (selectproc1test)] }]
+    [try: [do: (AssertSucceed $sp1_tests)] [succeed: ]
+          [] [do: (print "SAMPLER FAILURE: ***SELECT PROC TEST FAILED***" [])
+              conclude: (SamplerFailed "true")]]
+    [do: (print "-----------" [])]      
+    [set: $pp1_tests {task [] [do: (parallelproc1test)] }]
+    [try: [do: (AssertSucceed $pp1_tests)] [succeed: ]
+          [] [do: (print "SAMPLER FAILURE: ***PARALLEL PROC TEST FAILED***" [])
+              conclude: (SamplerFailed "true")]]
+    [do: (print "-----------" [])]
+    [set: $seq1_tests {task [] [do: (seqproc1test)] }]
+    [try: [do: (AssertSucceed $seq1_tests)] [succeed: ]
+          [] [do: (print "SAMPLER FAILURE: ***SEQUENCE PROC TEST FAILED***" [])
+              conclude: (SamplerFailed "true")]]
+    [do: (print "-----------" [])]
+    [set: $dp1_tests {task [] [do: (deepproc1test)] }]
+    [try: [do: (AssertSucceed $dp1_tests)] [succeed: ]
+          [] [do: (print "SAMPLER FAILURE: ***DEEP PROC TEST FAILED***" [])
+              conclude: (SamplerFailed "true")]]
+    [do: (print "-----------" [])]
+    [set: $cp1_tests {task [] [do: (contextproc1test)] }]
+    [try: [do: (AssertSucceed $cp1_tests)] [succeed: ]
+          [] [do: (print "SAMPLER FAILURE: ***CONTEXT PROC TEST FAILED***" [])
+              conclude: (SamplerFailed "true")]]
+    [do: (print "-----------" [])]
+    [set: $fap1_tests {task [] [do: (forallproc1test)] }]
+    [try: [do: (AssertSucceed $fap1_tests)] [succeed: ]
+          [] [do: (print "SAMPLER FAILURE: ***FORALL PROC TEST FAILED***" [])
+              conclude: (SamplerFailed "true")]]
+    [do: (print "-----------" [])]
+    [set: $fapp1_tests {task [] [do: (forallpproc1test)] }]
+    [try: [do: (AssertSucceed $fapp1_tests)] [succeed: ]
+          [] [do: (print "SAMPLER FAILURE: ***FORALL PARALLEL PROC TEST 1 FAILED***" [])
+              conclude: (SamplerFailed "true")]]
+    [do: (print "-----------" [])]
+    [set: $fapp2_tests {task [] [do: (forallpproc2test)] }]
+    [try: [do: (AssertSucceed $fapp2_tests)] [succeed: ]
+          [] [do: (print "SAMPLER FAILURE: ***FORALL PARALLEL PROC TEST 2 FAILED***" [])
+              conclude: (SamplerFailed "true")]]
+
+    [try: [do: (AssertSucceed {task [] [do: (trytest)]})] [succeed: ]
+          [] [do: (print "SAMPLER FAILURE: ***TRY TEST FAILED***" [])
+              conclude: (SamplerFailed "true")]]
+
+
+    [try: [context: (SamplerFailed "true")] 
+          [seq: [do: (print "Test Sampler FAILED" [])][fail: "sampler failed"] ]
+          []
+          [do: (print "Test Sampler Completed, ALL TESTS SUCCEEDED" [])]
+      ]
+    ]
+}
+
+
+
+{defaction (unit_sampler_test1 $foo)}
+{defprocedure Unit_sampler_Test1
+  cue: [do: (unit_sampler_test1 $foo)]
+  precondition: (Ground $foo)
+  body:
+    [seq:
+    [retractall: [$x] (SamplerFailed $x)]
+    [set: $p1_tests {task [] [do: (proc1test)] }]
+    [try: [do: (AssertSucceed $p1_tests)] 
+      [do: (actTestSucceed "unit_sampler_test1")]
+          [fail: (funcTestFailed "unit_sampler_test1" "procdone failed")]
+      []
+  ]
+]}
+{defaction (unit_sampler_test2 $foo)}
+{defprocedure Unit_Sampler_Test2
+  cue: [do: (unit_sampler_test2 $foo)]
+  precondition: (Ground $foo)
+  body:
+  [seq:
+    [set: $sp1_tests {task [] [do: (selectproc1test)] }]
+    [try: [do: (AssertSucceed $sp1_tests)]
+      [do: (actTestSucceed "unit_sampler_test2")]
+          [fail: (funcTestFailed "unit_sampler_test2" "select failed")]
+      []
+  ]
+]}
+{defaction (unit_sampler_test3 $foo)}
+{defprocedure Unit_Sampler_Test3
+  cue: [do: (unit_sampler_test3 $foo)]
+  precondition: (Ground $foo)
+  body:
+  [seq:     
+    [set: $pp1_tests {task [] [do: (parallelproc1test)] }]
+    [try: [do: (AssertSucceed $pp1_tests)]
+      [do: (actTestSucceed "unit_sampler_test3")]
+          [fail: (funcTestFailed "unit_sampler_test3" "parallel failed")]
+      []
+  ]
+]}
+{defaction (unit_sampler_test4 $foo)}
+{defprocedure Unit_Sampler_Test4
+  cue: [do: (unit_sampler_test4 $foo)]
+  precondition: (Ground $foo)
+  body:
+  [seq:
+    [set: $seq1_tests {task [] [do: (seqproc1test)] }]
+    [try: [do: (AssertSucceed $seq1_tests)]
+      [do: (actTestSucceed "unit_sampler_test4")]
+          [fail: (funcTestFailed "unit_sampler_test4" "seq failed")]
+      []
+  ]
+]}
+{defaction (unit_sampler_test5 $foo)}
+{defprocedure Unit_Sampler_Test5
+  cue: [do: (unit_sampler_test5 $foo)]
+  precondition: (Ground $foo)
+  body:
+  [seq:
+    [set: $dp1_tests {task [] [do: (deepproc1test)] }]
+    [try: [do: (AssertSucceed $dp1_tests)]
+      [do: (actTestSucceed "unit_sampler_test5")]
+          [fail: (funcTestFailed "unit_sampler_test5" "seq failed")]
+      []
+  ]
+]}
+{defaction (unit_sampler_test6 $foo)}
+{defprocedure Unit_Sampler_Test6
+  cue: [do: (unit_sampler_test6 $foo)]
+  precondition: (Ground $foo)
+  body:
+  [seq:
+    [set: $cp1_tests {task [] [do: (contextproc1test)] }]
+    [try: [do: (AssertSucceed $cp1_tests)]
+      [do: (actTestSucceed "unit_sampler_test6")]
+          [fail: (funcTestFailed "unit_sampler_test6" "context failed")]
+      []
+  ]
+]}
+{defaction (unit_sampler_test7 $foo)}
+{defprocedure Unit_Sampler_Test7
+  cue: [do: (unit_sampler_test7 $foo)]
+  precondition: (Ground $foo)
+  body:
+  [seq:
+    [set: $fap1_tests {task [] [do: (forallproc1test)] }]
+    [try: [do: (AssertSucceed $fap1_tests)]
+      [do: (actTestSucceed "unit_sampler_test7")]
+          [fail: (funcTestFailed "unit_sampler_test7" "forall failed")]
+      []
+  ]
+]}
+{defaction (unit_sampler_test8 $foo)}
+{defprocedure Unit_Sampler_Test8
+  cue: [do: (unit_sampler_test8 $foo)]
+  precondition: (Ground $foo)
+  body:
+  [seq:
+    [set: $fapp1_tests {task [] [do: (forallpproc1test)] }]
+    [try: [do: (AssertSucceed $fapp1_tests)]
+      [do: (actTestSucceed "unit_sampler_test8")]
+          [fail: (funcTestFailed "unit_sampler_test8" "forallp failed")]
+      []
+  ]
+]}
+{defaction (unit_sampler_test9 $foo)}
+{defprocedure Unit_Sampler_Test9
+  cue: [do: (unit_sampler_test9 $foo)]
+  precondition: (Ground $foo)
+  body:
+  [seq:
+    [set: $fapp2_tests {task [] [do: (forallpproc2test)] }]
+    [try: [do: (AssertSucceed $fapp2_tests)]
+      [do: (actTestSucceed "unit_sampler_test9")]
+          [fail: (funcTestFailed "unit_sampler_test9" "forallp with embedded select failed")]
+      []
+  ]
+]}
+{defaction (unit_sampler_test10 $foo)}
+{defprocedure Unit_Sampler_Test10
+  cue: [do: (unit_sampler_test10 $foo)]
+  precondition: (Ground $foo)
+  body:
+  [seq:
+    [try: [do: (AssertSucceed {task [] [do: (trytest)]})]
+      [do: (actTestSucceed "unit_sampler_test10")]
+          [fail: (funcTestFailed "unit_sampler_test10" "try failed")]
+      []
+  ]
+]}
+
+main: sampler_unit_tests
+export: sampler_unit_tests

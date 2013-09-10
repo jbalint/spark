@@ -1,0 +1,375 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 372 $" *#
+#* $Source: /homedir/cvs/cvsroot/spark/src/spark/tests/meta_test.spark,v $ *#
+#*****************************************************************************#
+main: meta_unit_tests
+
+importall: spark.lang.list
+importall: spark.lang.meta
+importall: spark.lang.advice
+importall: spark.tests.settings
+importall: spark.tests.unit
+
+{defaction (mygoal $x)}
+{defaction (meta_test $x)}
+{deffunction (mode $x)}
+{defpredicate (Mode $x $y)}
+
+export: Failure_Class_Name
+{defpredicate (Failure_Class_Name $reason $classname)
+  imp: (pyPredicate "+-" (pyMeth "class_name"))}
+
+{defprocedure print_objective_adopted
+  cue: [newfact: (AdoptedTask $task)]
+  precondition: (and (Debug "meta") (Objective $task $obj) (= $task $obj) (ObjectId $task $tid))
+  body: [do: (print "*  Adopted_Objective: %s" [$tid])]
+  }
+{defprocedure print_objective_completed
+  cue: [newfact: (CompletedTask $task)]
+  precondition: (and (Debug "meta") (Objective $task $obj) (= $task $obj) (ObjectId $task $tid))
+  body: [do: (print "*  Completed_Objective: %s" [$tid])]
+  }
+{defprocedure print_objective_failed
+  cue: [newfact: (FailedTask $task $reason)]
+  precondition: (and (Debug "meta") (Objective $task $obj) (= $task $obj)
+		     (ObjectId $task $tid) (Failure_Class_Name $reason $name))
+  body: [do: (print "*  Failed_Objective: %s %s" [$tid $name])]
+  }
+{defprocedure print_object_level_goals_AdoptedTask
+  cue: [newfact: (AdoptedTask $task)]
+  precondition: (and (Debug "meta") (Objective $task $obj) (not (= $task $obj))
+		     (ObjectId $task $tid))
+  body: [do: (print "*  AdoptedTask: %s" [$tid])]
+  }
+{defprocedure print_object_level_goals_CompletedTask
+  cue: [newfact: (CompletedTask $task)]
+  precondition: (and (Debug "meta") (Objective $task $obj) (not (= $task $obj))
+		     (ObjectId $task $tid))
+  body: [do: (print "*  CompletedTask: %s" [$tid])]
+  }
+{defprocedure print_object_level_goals_FailedTask
+  cue: [newfact: (FailedTask $task $reason)]
+  precondition: (and (Debug "meta") (Objective $task $obj) (not (= $task $obj))
+		     (ObjectId $task $tid) (Failure_Class_Name $reason $name))
+  body: [do: (print "*  FailedTask: %s %s" [$tid $name])]
+  }
+{defprocedure print_object_level_procedures_started
+  cue: [newfact: (StartedProcedure $tframe)]
+  precondition: (and (Debug "meta") (Objective $tframe $_obj) (ProcInstId $tframe $pid))
+  body: [do: (print "*  StartedProcedure: %s" [$pid])]
+  }
+{defprocedure print_object_level_procedures_started_synchronous
+  cue: [newfact: (StartedProcedureSynchronous $tframe)]
+  precondition: (and (Debug "meta") (Objective $tframe $_obj) (ProcInstId $tframe $pid))
+  body: [do: (print "*  StartedProcedureSynchronous: %s" [$pid])]
+  }
+{defprocedure print_object_level_procedures_completed
+  cue: [newfact: (CompletedProcedure $tframe)]
+  precondition: (and (Debug "meta") (Objective $tframe $_obj) (ProcInstId $tframe $pid))
+  body: [do: (print "*  CompletedProcedure: %s" [$pid])]
+  }
+{defprocedure print_object_level_procedures_failed
+  cue: [newfact: (FailedProcedure $tframe $reason)]
+  precondition: (and (Debug "meta") (Objective $tframe $_obj)
+		     (ProcInstId $tframe $pid) 
+		     (Failure_Class_Name $reason $name))
+  body: [select: (FailValue $reason $value)
+		 [do: (print "*  FailedProcedure: %s %s fail: %r" [$pid $name $value])]
+		 (True)
+		 [do: (print "*  FailedProcedure: %s %s" [$pid $name])]]
+  }
+
+{defaction (myfail)}
+{defprocedure myfail_procedure
+  cue: [do: (myfail)]
+  precondition: (True)
+  body: [fail: "I want to"]}
+
+
+{defprocedure mygoal_bad
+  cue: [do: (mygoal $x)]
+  precondition: (= $x "B")
+  body: [try: [do: (myfail)] []
+	      [] []]
+  features: [(mode "bad")]}
+
+{defprocedure mygoal_good
+  cue: [do: (mygoal $x)]
+  precondition: (= $x "G")
+  body: []
+  features: [(mode "good")]}
+
+{defprocedure mygoal_neutral
+  cue: [do: (mygoal $x)]
+  precondition: (= $x "N")
+  body: []
+  features: [(mode "neutral")]}
+
+{defprocedure _meta_test
+  cue: [do: (meta_test $args)]
+  precondition: (Ground $args)
+  body: [seq: 
+	  [context: (CurrentEvent $task)]
+	  [do: (print "top task should be ...|do_meta_test...: %s" [$task])]
+	  [context: (CurrentTFrame $pi)]
+	  [do: (print "procedure instance should be ... %s" [$pi])]
+	  [do: (print "Posting (mygoal $x) - no preference" [])]
+	  [retractall: [$a1 $b1](Mode $a1 $b1)]
+	  [do: (mygoal $x)]
+	  [do: (print "Succeeded (mygoal %s)" [$x])]
+
+	  [do: (print "Posting (mygoal $xg) - prefer good" [])]
+	  [retractall: [$a2 $b2](Mode $a2 $b2)]
+	  [conclude: (Mode prefer "good")]
+	  [do: (mygoal $xg)]
+	  [do: (print "Succeeded (mygoal %s)" [$xg])]
+
+	  [do: (print "Posting (mygoal $xb) - prefer bad" [])]
+	  [retractall: [$a3 $b3](Mode $a3 $b3)]
+	  [conclude: (Mode prefer "bad")]
+	  [do: (mygoal $xb)]
+	  [do: (print "Succeeded (mygoal %s)" [$xb])]
+
+	  [do: (print "Posting (mygoal $xg1) - avoid neutral, bad" [])]
+	  [retractall: [$a4 $b4](Mode $a4 $b4)]
+	  [conclude: (and (Mode avoid "bad") (Mode avoid "neutral"))]
+	  [do: (mygoal $xg1)]
+	  [do: (print "Succeeded (mygoal %s)" [$xg1])]
+
+	  [do: (print "Posting (mygoal $xb1) - avoid neutral, good" [])]
+	  [retractall: [$a5 $b5](Mode $a5 $b5)]
+	  [conclude: (and (Mode avoid "good") (Mode avoid "neutral"))]
+	  [do: (mygoal $xb1)]
+	  [do: (print "Succeeded (mygoal %s)" [$xb1])]
+
+	  [do: (print "Posting (mygoal \"nomatch\") - does not match" [])]
+	  [try: [do: (mygoal "nomatch")]
+		[do: (print "Succeeded unexpectedly" [])]
+		[]
+		[do: (print "Failed as expected" [])]]
+
+	  ]}
+
+{defaction (meta_unit_tests $args)}
+{defprocedure Meta_Unit_Tests
+  cue: [do: (meta_unit_tests $args)]
+  precondition: (Ground $args)
+  body: [seq:
+	  [conclude: (Debug "meta")]
+          [do: (print "META UNIT TESTS" [])]
+          [do: (print "----------------" [])]
+	  [context: (CurrentEvent $task)]
+	  #[do: (print "top task should be ...|do_meta_test...: %s" [$task])]
+	  [context: (CurrentTFrame $pi)]
+	  [context: (ProcInstSymbol $pi Meta_Unit_Tests)
+		    "ProcInstSymbol failed to get the correct procedure symbol"]
+	  #[do: (print "procedure instance should be ... %s" [$pi])]
+          [do: (print "Starting Meta Unit Tests" [])]
+
+	  [do: (print "---------------" [])]       
+	  [do: (print "Testing (mygoal $x) - no preference" [])]
+	  [retractall: [$a1 $b1](Mode $a1 $b1)]
+	  [do: (print "retracting" [])]
+          [set: $mygoaltask {task [$arg] [do: (mygoal $arg)]}]
+	  [do: (print "setting task" [])]
+          #[do: (mygoal $x)]
+	  #[do: (print "completed mygoal" [])]
+          [do: (AssertSucceed1 $mygoaltask $_x)]
+	  [do: (print "assert succeed done" [])]
+
+	  [do: (print "Testing (mygoal $xg) - prefer good" [])]
+	  [retractall: [$a2 $b2](Mode $a2 $b2)]
+	  [conclude: (Mode prefer "good")]
+          [do: (AssertSucceed1 $mygoaltask $_xg)]
+
+	  [do: (print "Testing (mygoal $xb) - prefer bad" [])]
+	  [retractall: [$a3 $b3](Mode $a3 $b3)]
+	  [conclude: (Mode prefer "bad")]
+          [do: (AssertSucceed1 $mygoaltask $_xb)]
+
+	  [do: (print "Testing (mygoal $xg1) - avoid neutral, bad" [])]
+	  [retractall: [$a4 $b4](Mode $a4 $b4)]
+	  [conclude: (and (Mode avoid "bad") (Mode avoid "neutral"))]
+          [do: (AssertSucceed1 $mygoaltask $_xg1)]
+
+	  [do: (print "Testing (mygoal $xb1) - avoid neutral, good" [])]
+	  [retractall: [$a5 $b5](Mode $a5 $b5)]
+	  [conclude: (and (Mode avoid "good") (Mode avoid "neutral"))]
+	  [do: (mygoal $_xb1)]
+
+	  [do: (print "Testing (mygoal \"nomatch\") - does not match" [])]
+	  [set: $mygoaltasknm {task [] [do: (mygoal "nomatch")]} ]
+          [do: (AssertFail $mygoaltasknm)]
+
+	  [do: (print "---------------" [])]
+	  [do: (print "Meta Unit Tests Completed, ALL TESTS SUCCEEDED" [])]
+	  [retract: (Debug "meta")]
+	  ]}
+
+{defadvice _prefer_thing prefer $g (Ground $g)
+  $pi (and #(MyPr "TESTING prefer thing"[])
+	(Mode prefer $x) 
+	(Feature $pi (mode $x))
+	#(MyPr "FOUND preferred feature %s"[$x])
+	)}
+
+(AdviceActive _prefer_thing)
+
+(Advice `_avoid_thing avoid 
+	{pred [+$g +$pi] (and 
+			 (Mode avoid $x)
+			 (Feature $pi (mode $x))
+			 #(MyPr "FOUND avoided feature %s"[$x])
+			 )}
+	"Other documentation")        
+
+(AdviceActive `_avoid_thing)
+
+{defconsult _always $event $tframes
+ (and (Ground $event) (Ground $tframes))}
+
+(ConsultActive _always)
+
+{defprocedure Trivial_consultUser
+  cue: [do: (consultUser $clabels $event $orig_tframes $pref_tframes
+			  $selected_tframe)]
+  precondition: (and (Ground $event) (Ground $clabels) (Ground $orig_tframes))
+  body: [seq:
+	  [do: (print "Consulting user about %s due to rules: %s"
+		      [$event $clabels])]
+	  [context: (Index 0 $selected_tframe $pref_tframes)]]}
+
+##############
+#Modified unit tests
+##############
+{defaction (unit_mygoal $args)}
+{defprocedure Unit_Mygoal
+  doc: "Testing mygoal"
+  cue: [do: (unit_mygoal $args)]
+  precondition: (Ground $args)
+  body: 
+  [seq: 
+      [do: (print "Testing (mygoal $x) - no preference" [])]
+      [retractall: [$a1 $b1](Mode $a1 $b1)]
+      [do: (print "retracting" [])]
+      [set: $mygoaltask {task [$arg] [do: (mygoal $arg)]}]
+      [do: (print "setting task" [])]
+        [try: [do: (AssertSucceed1 $mygoaltask $_x)] [do: (actTestSucceed "unit_mygoal")]
+      [fail: (funcTestFailed "unit_mygoal" "AssertSucceed (1 arg) failed")] []
+      ]
+      [do: (print "assert succeed done" [])]
+  ]  
+}
+{defaction (unit_mygoal_xg $args)}
+{defprocedure Unit_Mygoal_XG
+  doc: "Testing mygoal (good)"
+  cue: [do: (unit_mygoal_xg $args)]
+  precondition: (Ground $args)
+  body: 
+    [seq:
+	    [do: (print "Testing (mygoal $xg) - prefer good" [])]
+	    [retractall: [$a2 $b2](Mode $a2 $b2)]
+	    [set: $mygoaltask {task [$arg] [do: (mygoal $arg)]}]
+	    [conclude: (Mode prefer "good")]
+	    [try: [do: (AssertSucceed $mygoaltask)] [do: (actTestSucceed "unit_mygoal_xg")]
+	         [fail: (funcTestFailed "unit_mygoal_xg" "AssertSucceed failed")] []
+	    ]
+	    [do: (print "assert succeed done" [])]
+    ]
+}
+
+{defaction (unit_mygoal_xb $args)}
+{defprocedure Unit_Mygoal_XB
+  doc: "Testing mygoal (bad)"
+  cue: [do: (unit_mygoal_xb $args)]
+  precondition: (Ground $args)
+  body: 
+    [seq:
+	    [do: (print "Testing (mygoal $xb) - prefer bad" [])]
+	    [retractall: [$a3 $b3](Mode $a3 $b3)]
+	    [conclude: (Mode prefer "bad")]
+	    [set: $mygoaltask {task [$arg] [do: (mygoal $arg)]}]
+	    [try: [do: (AssertSucceed1 $mygoaltask $_xb)] [do: (actTestSucceed "unit_mygoal_xb")]
+	         [fail: (funcTestFailed "unit_mygoal_xb" "AssertSucceed (1 arg) failed")] []
+	    ]    
+	  ]
+}
+
+{defaction (unit_mygoal_xg1 $args)}
+{defprocedure Unit_Mygoal_G1
+  doc: "Testing mygoal (good only)"
+  cue: [do: (unit_mygoal_xg1 $args)]
+  precondition: (Ground $args)
+  body: 
+    [seq:
+	    [do: (print "Testing (mygoal $xg1) - avoid neutral, bad" [])]
+	    [retractall: [$a4 $b4](Mode $a4 $b4)]
+	    [conclude: (and (Mode avoid "bad") (Mode avoid "neutral"))]
+	    [set: $mygoaltask {task [$arg] [do: (mygoal $arg)]}]
+	    [try: [do: (AssertSucceed1 $mygoaltask $_xg1)] [do: (actTestSucceed "unit_mygoal_xg1")]
+	         [fail: (funcTestFailed "unit_mygoal_xg1" "AssertSucceed (1 arg) failed")] []
+	    ]
+	          
+    ]
+}
+
+{defaction (unit_mygoal_xb1 $args)}
+{defprocedure Unit_Mygoal_XB1
+  doc: "Testing mygoal (bad only)"
+  cue: [do: (unit_mygoal_xb1 $args)]
+  precondition: (Ground $args)
+  body: 
+    [seq:
+	    [do: (print "Testing (mygoal $xb1) - avoid neutral, good" [])]
+	    [retractall: [$a5 $b5](Mode $a5 $b5)]
+	    [conclude: (and (Mode avoid "good") (Mode avoid "neutral"))]
+	    [set: $mygoaltask {task [$arg] [do: (mygoal $arg)]}]
+	    [try: [do: (AssertSucceed1 $mygoaltask $_xb1)] [do: (actTestSucceed "unit_mygoal_xb1")]
+	         [fail: (funcTestFailed "unit_mygoal_xb1" "mygoal failed")] []
+	    ]
+    ]
+}
+
+{defaction (unit_mygoal_tasknm $args)}
+{defprocedure Unit_Mygoal_TaskNM
+  doc: "Testing mygoal (no match)"
+  cue: [do: (unit_mygoal_tasknm $args)]
+  precondition: (Ground $args)
+  body: 
+    [seq:
+	    [do: (print "Testing (mygoal \"nomatch\") - does not match" [])]
+	    [set: $mygoaltasknm {task [] [do: (mygoal "nomatch")]} ]
+	    [try: [do: (AssertFail $mygoaltasknm)] [do: (actTestSucceed "unit_mygoal_tasknm")]
+	         [fail: (funcTestFailed "unit_mygoal_tasknm" "AssertFail failed")] []
+	    ]
+    ]
+}
+
+export: meta_unit_tests

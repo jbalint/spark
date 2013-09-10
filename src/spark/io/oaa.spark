@@ -1,0 +1,178 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 24 $" *#
+#* $Source: /homedir/cvs/cvsroot/spark/src/spark/io/oaa.spark,v $ *#
+#*****************************************************************************#
+
+importfrom: spark.lang.string formatString
+
+{defpredicate (OaaAgentName $name) imp: (determined "-")}
+
+
+{deffunction (oaaVar $name)
+  doc: "Existentially quantified variable to send to OAA"
+  imp: (pyFunction "+" (pyModRaw "spark.io.oaa" "oaavar"))}
+
+{deffunction (generateIclTerm $string)
+  doc: "Generate an IclTerm from a string"
+  imp: (pyReversible "+" (pyModRaw "spark.io.oaa" "string_to_icl")
+          (pyModRaw "spark.io.oaa" "icl_string"))}
+        
+{defpredicate (IclString $icl $string)
+  doc: "Convert between IclTerms and string representations of IclTerms"
+  imp: (pyPredicate "??" (pyModRaw "spark.io.oaa" "icl_string"))}
+
+{defaction (oaaStart $host_str $port_num $name_str)
+  doc: "Connect to facilitator"}
+
+{defaction (oaaInit $host_str $port_num $name_str)
+  doc: "Connect to facilitator"
+  imp: (pyActionThread "A???" (pyModRaw "spark.io.oaa" "oaaStart"))}
+
+{defaction (oaaStop)
+  doc: "Disconnect from facilitator"}
+
+{defaction (ossShutdown)
+  doc: "Called to disconnect from facilitator"
+  imp: (pyActionThread "A" (pyModRaw "spark.io.oaa" "oaaStop"))}
+
+{defaction (oaaSolve $namestring $arg rest: $args)
+  doc: "Solve the OAA solvable with the given name"
+  imp: (pyActionThread "A+??*" (pyModRaw "spark.io.oaa" "oaaSolve"))}
+
+{defaction (oaaPSolve $namestring $params $arg rest: $args)
+  doc: "Solve the OAA solvable with the given name"
+  imp: (pyActionThread "A++??*" (pyModRaw "spark.io.oaa" "oaaPSolve"))}
+
+{defpredicate (Solvable $string $symbol)
+  doc: "The action is to be registered as solvable"}
+
+{deffunction (oaaStruct $functorsymbol rest: $args)
+  doc: "Construct a structure. Similar to @@ but takes a functor symbol rather than string."
+  imp: (pyReversible "++*" (pyModRaw "spark.io.oaa" "oaa_construct")
+          (pyModRaw "spark.io.oaa" "oaa_deconstruct"))}
+
+{defpredicate (OAAIclDataQString $icldataq $string)
+  doc: "Convert IclDataQ byte data into a string and vice versa"
+  imp: (pyPredicate "??" (pyModRaw "spark.io.oaa" "dataq_to_string"))}
+
+{defpredicate (IclValue $icl $value)
+  doc: "Convert between Icl and SPARK values"
+  imp: (pyPredicate "??" (pyModRaw "spark.io.oaa" "icl_value"))}
+
+{deffunction (rawOAA $goal $params)
+  imp: (pyFunction "A++" (pyModRaw "spark.io.oaa" "rawoaasolve"))}
+
+{defprocedure _oaaStopProcedure
+  doc: "Disconnects from the facilitator"
+  cue: [do: (oaaStop)]
+  precondition: (ConnectedToOAA)
+  body: [seq: [retract: (Solvable "agentStatus" (qent agentStatus))]
+          [do: (ossShutdown)]
+          [retractall: [$ag] (OnlineAgent $ag)]
+          [retractall: [$name] (OaaAgentName $name)]
+          [do: (print "Disconnected from the facilitator." [])]]}
+        
+{defprocedure _oaaStartProcedure
+  doc: "Connects to the facilitator and sets up the triggers."
+  cue: [do: (oaaStart $host_str $port_num $name_str)]
+  precondition: (not (ConnectedToOAA))
+  body: [seq: [conclude: (Solvable "agentStatus" (qent agentStatus))]
+          [do: (oaaInit $host_str $port_num $name_str)]
+          [context: (IclString $trig "agent_data(Id,Type,ready,Sv,Name,Info)")]
+          [set: $solvable "agentStatus(Op,[Id,Type,ready,Sv,Name,Info])"]
+          [set: $address (getAgentAddress)]
+          [context: (IclString $action (formatString "oaa_Solve(%s, [reply(none), address(%s)])" [$solvable $address]))]
+          [set: $params [`(recurrence "whenever") (@@ "on" (oaaVar "Op"))]]
+          [retractall: [$onlineAgent] (OnlineAgent $onlineAgent)]
+          [do: (oaaSetTrigger "data" $trig $action $params)]
+          [forin: $ag (getOnlineAgents) [conclude: (OnlineAgent $ag)]]
+          [conclude: (OaaAgentName $name_str)]
+          [do: (print "Connected to the facilitator." [])]]}          
+
+#Moved from oaautil:
+{defpredicate (CanSolve $goal)
+  doc: "Determines whether the goal is solvable or not"
+  imp: (pyPredicate "A+" (pyModRaw "spark.io.oaa" "can_solve"))}
+
+{deffunction (getAgentAddress)
+  doc: "Get the address of this spark agent."
+  imp: (pyFunction "A" (pyModRaw "spark.io.oaa" "get_agent_address"))}
+
+{defpredicate (OnlineAgent $agent)}
+
+{defpredicate (ConnectedToOAA)
+  doc: "Determines whether we are connected to the facilitator"
+  imp: (pyPredicate "A" (pyModRaw "spark.io.oaa" "get_oaa_connection"))}
+
+{defaction (agentStatus $op $list)
+  doc: "A trigger has been set up to call this action whenever an agent gets connected to or disconnected from the facilitator."}
+
+{defaction (oaaSetTrigger $type $triggerterm $actionterm $params)
+  doc: "Set up a trigger. All parameters can be passed in spark form."
+  imp: (pyActionThread "A++++" (pyModRaw "spark.io.oaa" "oaa_set_trigger"))}
+
+{deffunction (getOnlineAgents)
+  doc: "Get a list of all the agents connected to the facilitator."
+  imp: (pyFunction "A" (pyModRaw "spark.io.oaa" "get_online_agents"))}
+
+{defprocedure _agentAddRemoveTrigger
+  cue: [do: (agentStatus +$op +$list)]
+  precondition: (or (= $op "add") (= $op "remove"))
+  body: [select: (=$op "add")    [conclude: (OnlineAgent (index 4 $list))]
+                 (=$op "remove") [retract: (OnlineAgent (index 4 $list))]]}
+
+{defaction (oaaAddData $term $params)
+  doc: "Adds a new data to the facilitator"
+  imp: (pyActionThread "A++" (pyModRaw "spark.io.oaa" "oaa_add_data"))}
+
+{defaction (oaaReplaceData $term1 $term2 $params)
+  doc: "Replace an old data with a new data in the facilitator"
+  imp: (pyActionThread "A+++" (pyModRaw "spark.io.oaa" "oaa_replace_data"))}
+
+{defaction (oaaRemoveData $term $params)
+  doc: "Removes an data from the facilitator"
+  imp: (pyActionThread "A++" (pyModRaw "spark.io.oaa" "oaa_remove_data"))}
+
+
+{defaction (oaaSolutions $query $params $pat $patInstances)
+  doc: "Solve the OAA solvable, returning instantiations of $pat. $params are the OAA parameters, usually just the empty list, []."
+  imp: (pyActionThread "A+++-" (pyModRaw "spark.io.oaa" "rawoaasolve"))}
+
+# Examples:
+# [do: (oaaSolutions `(p $X $Y) [] `$X $ans)] gets a list of
+# X for each answer to the solvable 'p(X,Y)'
+
+# If $y is bound to 1 then 
+# [do: (oaaSolutions `(p $X ,$y) [] `$X $ans)] gets a list of X for
+# each answer to the solvable 'p(X,1)'
+
+exportall:
+
+

@@ -1,0 +1,49 @@
+main: main
+importfrom: spark.io.exec execStart execStop executeTask
+
+{defaction (main +$args)
+  imp: {task [+$args] [do: (test)]}}
+
+{defaction (test)}
+{defprocedure _test
+  cue: [do: (test)]
+  body: [seq:
+	  [set: $x1 (pyEval "M.spark__io__exec.debug.on() or 0")]
+	  [set: $x2 (pyEval "M.spark__io__common.commsDebug.on() or 0")]
+	  #[set: $traceOn (pyEval "M.spark__internal__debug__trace.enable_tracing() or 0")]
+	  [do: (execStart)]
+	  [set: $y (pyEval "M.spark__io__exec.setLoopback() or 0")]
+	  [do: (executeTask "task1" [1 NULL] $result)]
+	  [do: (print "task1 results in %r" [$result])]
+	  ]}
+
+{defaction (task1 +$in -$out)
+  properties: `[(uri "id:task1")]}
+{defprocedure _task1
+  cue: [do: (task1 +$in -$out)]
+  body: [do: (task2 $in $out)]
+}
+
+
+{defaction (task2 +$in -$out)
+  properties: `[(uri "id:task2")]}
+{defprocedure _task2
+  cue: [do: (task2 +$in -$out)]
+  body: [do: (executeTask "task3" (partial [$in 7] 7) [$_in $out])]
+}
+
+{defaction (task3 +$in -$out)
+  properties: `[(uri "id:task3")]}
+{defprocedure _task3
+  cue: [do: (task3 +$in -$out)]
+  body: [do: (task4 $in $out)]
+}
+
+{defaction (task4 +$in -$out)
+  properties: `[(uri "id:task4")]}
+{defprocedure _task4
+  cue: [do: (task4 +$in -$out)]
+  body: [set: $out $in]
+}
+
+

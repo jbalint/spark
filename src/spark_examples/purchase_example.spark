@@ -1,0 +1,435 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 24 $" *#
+#* $Source: /homedir/cvs/cvsroot/spark/src/spark_examples/purchase_example.spark,v $ *#
+#*****************************************************************************#
+
+importall: spark.lang.list
+importall: spark.util.misc
+
+{defconstant USER}
+{defconstant random}
+{defpredicate (User $user)}
+{defpredicate (Called $user $username)}
+{defaction (find_laptop $item $criteria $selection)}
+{defaction (complete_form $form_type $form $selection)}
+{defconstant requisition_form}
+{defaction (obtain_authorizations $form $selection)}
+{defaction (place_order $selection)}
+{defaction (purchase $item $criteria)}
+{defaction (find_bids $item $criteria $quotes)}
+{defaction (choose_item $quotes $selection)}
+{defaction (fetch_query $item $criteria $quotes)}
+{defaction (display_laptops $user $quotes $selection)}
+{defaction (random_choice $quotes $selection)}
+{defpredicate (Choice_Preference $user $pref)}
+{defpredicate (Have_Form $form)}
+{defpredicate (Current_Form $this_form)}
+{defpredicate (Slot $form $x)}
+{defpredicate (Slot_Info $this_form $x $info)}
+{defpredicate (Pretty_Printable $form $pform)}
+{defpredicate (Signing_Authority_For $user $manager1)}
+{defaction (get_authorization $manager1 $form)}
+{defpredicate (Received_Authorizations $selection)}
+{defaction (process_authorization_response $manager $form)}
+{defpredicate (Rejected_Authorization $manager $form)}
+{deffunction (purchase_failure $reason)}
+{deffunction (cancelled_failure $reason)}
+{defpredicate (Received_Message $manager $this_form $response)}
+{defconstant affirmative}
+{defconstant negative}
+{defaction (confirm_order $selection)}
+{defpredicate (Admin_Of $user $admin)}
+{defpredicate (Sells $item $vendor)}
+{defpredicate (New_Seller $vendor $item $price)}
+{defconstant DEFAULT}
+{defconstant minimum_cost}
+{deffunction (fillFormSlot $form $x)}
+{defpredicate (Has_Authorization $manager $form)}
+{defaction (add_response $manager $response)}
+
+
+
+###########
+#
+# Main purchase routine, for laptops
+#
+#
+{defprocedure Buy_Laptop
+  cue: [do: (purchase +$item +$criteria)]
+  precondition: (= $item laptop)
+  body:
+  [seq: [context: (and (User $user) (Called $user $username))]
+	[do: (find_laptop $item $criteria $selection)]
+	[do: (complete_form requisition_form $this_form $selection)]
+	[do: (obtain_authorizations $this_form $selection)]
+	[do: (place_order $selection)]
+	[context: (Index 0 $pselection $selection)]
+	[do: (print
+	      " %s:  *** Purchase of laptop %s completed ***" 
+	      [$username $pselection])]]
+}
+
+
+# Find Laptop
+#
+# Finds bids, then chooses among the possible choices.
+#
+{defprocedure Find_Laptop
+  cue: [do: (find_laptop +$item +$criteria -$selection)]
+  body:
+  [seq: [do: (find_bids $item $criteria $quotes)]
+	# find_bids always returns AT LEAST 1 quote
+	[select: 
+	 (> (length $quotes) 1)
+	 [do: (choose_item $quotes $selection)]
+	 (True) # case: only 1 laptop fit criteria, so go with it
+	 [set: $selection (first $quotes)]]]
+}
+
+
+# Find Bids
+# 
+# Sends requirements to fetch_query.
+#
+# $criteria: (speed, ram, hd, weight, price)
+#
+{defprocedure Find_Bids
+  cue: [do: (find_bids +$item +$criteria -$quotes)]
+  body:
+  [seq: [do: (fetch_query $item $criteria $quotes)]
+	[do: (print "got quotes" [])]]
+}
+
+# This version of choose_item displays options for the user
+# and just lets them pick one.
+#
+{defprocedure Select_Item__User_Input
+ cue: [do: (choose_item +$quotes -$selection)]
+ body:
+ [seq: [context: (and (User $user) (Called $user $username))]
+       [do: (display_laptops $user $quotes $selection)]
+       [context: (Index 0 $x $selection)]
+       [do: (print "%s: You have chosen %s" [$username $x])]]
+}
+
+
+# For simplicity, this version of complete_form assumes that we
+# already have a parsed version of the form stored in the database,
+# so that we just need to look up each slot.
+#
+{defprocedure Complete_Form
+  cue: [do: (complete_form $form $this_form +$item)]
+  precondition: (Have_Form $form)
+  body: [context: (= $this_form (createInstanceOf $form))
+	 seq:
+	 [conclude: (Current_Form $this_form)]
+	 [forall: [$x] (Slot $form $x) 
+		  [succeed: conclude: (Slot_Info $this_form $x (fillFormSlot $form $x))]]
+	 [context: (and (User $user) (Called $user $username)
+			(Pretty_Printable $form $pform))
+	  do: (print 
+	       "%s:  I have filled out form %s for you" 
+	       [$username $pform])]]
+}
+
+# This version of complete_form just asks the user to fill out the form
+#
+{defprocedure Complete_Form__User
+  cue: [do: (complete_form +$form $this_form +$item)]
+  precondition: (and (not (Have_Form $form)))
+  body: [context: (and (User $user)
+		       (Called $user $username)
+		       (=  $item $item)
+		       (Pretty_Printable $form $pform)
+		       (= $this_form (createInstanceOf $form)))
+	 seq: [conclude: (Current_Form $this_form)]
+	      [do: (print "%s:  You need to fill out form %s!" [$username $pform])]]
+}
+
+
+# GetAuthorizations
+# Tries to get email authorization from 2 different
+# managers.
+#
+{defprocedure GetAuthorizations
+  cue: [do: (obtain_authorizations +$form $selection)]
+  precondition: (and (User $user) 
+		     (Signing_Authority_For $user $manager1)
+		     (Signing_Authority_For $user $manager2)
+		     (!= $manager1 $manager2))
+  body:
+  [context: (and (User $user) (Called $user $username)
+		 (Index 0 $pselection $selection)
+		 (= $form $form))
+   parallel: [do: (print "%s:  getting authorizations for %s" [$username $pselection])]
+	     [do: (get_authorization $manager1 $form)]
+	     [do: (get_authorization $manager2 $form)]
+   conclude: (Received_Authorizations $selection)]
+}
+
+
+# Get_Single_Authorization
+#
+{defprocedure GetSingleAuthorization
+  cue: [do: (get_authorization +$manager +$form)]
+  precondition: (True)
+  body: [context: (and (User $user)
+		       (Called $user $username)) 
+	 parallel: 
+	 [do: (print "   %s:  For your approval:  %s" [$manager $form])]
+	 [context: (Called $manager $pmanager)
+	  do: (print "  %s:  approval request sent to %s" [$username $pmanager])]
+	 [do: (process_authorization_response $manager $form)]
+	 [wait: (Has_Authorization $manager $form) 
+		[succeed: retract: (Has_Authorization $manager $form)]
+		(Rejected_Authorization $manager $form) 
+		[seq: [do: (print "%s:  Cancelling purchase request" [$username]) retractall: [] (Rejected_Authorization $manager $form)]
+		      [fail: (purchase_failure "manager turned down request for approval")]]]]
+}
+
+# Add Response
+#
+# This is for testing purposes only --
+# Automatically adds the response from the authority
+# for Current_Form
+{defprocedure Add_Response
+  cue: [do: (add_response +$manager +$response)]
+  precondition: (True)
+  body: [context: (Current_Form $this_form)
+	 conclude: (Received_Message $manager $this_form $response)]
+}
+
+# Process_Authorization_Response
+# Really need to add something here that deals with an answer
+# other than "yes" or "no" (like a request for more information)
+#
+{defprocedure ProcessAuthorizationResponse
+  cue: [do: (process_authorization_response $manager $form)]
+  precondition: (True)
+  body: [wait: (Received_Message $manager $form affirmative)
+	       [context: (and (User $user) 
+			      (Called $user $username)
+			      (Called $manager $pmanager))
+		do: (print "%s:  %s gave approval" [$username $pmanager])  conclude: (Has_Authorization $manager $form)]
+	       (Received_Message $manager $form negative)
+	       [context: (and (User $user) (Called $user $username) (Called $manager $pmanager))
+		do: (print "%s:  %s rejected the request for authorization" [$username $pmanager]) conclude: (Rejected_Authorization $manager $form)]
+	 retractall: [$response] (Received_Message $manager $form $response)]
+}
+
+# Confirm Order
+#
+{defprocedure ConfirmOrder
+  cue: [do: (confirm_order $selection)]
+  precondition: (True)
+  body: [seq:
+	  [context: (and (User $user)
+			 (Called $user $username)
+			 (Index 0 $pselection $selection)
+	  # for testing, assume user always says yes....
+			 (= $response "yes"))]
+	  [select: (= "yes" $response)
+		   [succeed: ]
+		   (= "no" $response)
+		   [seq: [do: (print 
+			       "%s:  Cancelling purchase request" [$username])]
+			 [fail: (cancelled_failure "user cancelled this request")]]]]
+}
+
+
+# Place Order
+#
+# This version just sends a message to the admin asking him/her
+# to place the order..
+#
+# Need another version that interfaces with CA
+#
+# This version also confirms the order with the user first
+#
+{defprocedure PlaceOrder
+  cue: [do: (place_order $selection)]
+  precondition: (True)
+  body: 
+  [context: (and (User $user)
+		 (Called $user $username)
+		 (Admin_Of $user $admin) 
+		 (Index 0 $pselection $selection))
+   seq: [do: (confirm_order $selection)]
+	[do: (print
+	      "%s:   Please purchase %s for %s!  Thank you!" 
+	      [$admin $pselection $username])]]
+}
+
+# AddVendor
+# Cues on a fact being added to the KB
+# Prints a status message and concludes by adding a fact to the KB.
+#
+# NOTE:  this type of reasoning would normally (I think) be done
+# strictly on the "knowledge" side, not on the "process" side,
+# but it's here to help with debugging the process models.
+#
+{defprocedure AddVendor
+  cue: [newfact: (New_Seller +$vendor +$item +$price)]
+  precondition: (not (Sells $item $vendor))
+  body:
+  [do: (print "Seller %s sells %s for %s dollars" [$vendor $item $price])
+   conclude: (Sells $item $vendor)]
+}
+
+######################
+######################
+##
+## Database part
+##
+## Normally, you would probably want to move data liek this
+## into a separate file form your processes, but it is included
+## here as an example.
+##
+########
+
+(User USER)
+(Choice_Preference USER random)
+(Choice_Preference DEFAULT minimum_cost)
+
+######
+# Allow testing without being connected to OAA
+#
+#(OAA_Connection false)
+
+#####
+# Set the logging level
+#
+{defpredicate (Logging_Level $level)
+  imp: (determined "-")}
+(Logging_Level 5)
+
+{defpredicate (Type $type $instance)}
+{defconstant computer}
+{defconstant laptop}
+{defconstant desktop}
+(Type computer laptop)
+(Type computer desktop)
+
+#############################
+##
+## Laptop Info
+##
+## This knowledge is only used for debugging;
+## normally would be added by CA
+##
+#############################
+{defconstant ibook}
+{defconstant power_book}
+{defconstant thinkpad}
+{defconstant dell}
+(Type laptop ibook)
+(Type laptop power_book)
+(Type laptop thinkpad)
+(Type laptop dell)
+
+{defconstant Apple}
+{defconstant IBM}
+{defconstant Gateway}
+{defconstant Dell}
+(Sells ibook Apple)
+(Sells power_book Apple)
+(Sells thinkpad IBM)
+(Sells thinkpad Gateway)
+(Sells thinkpad Dell)
+(Sells dell Gateway)
+(Sells dell Dell)
+
+
+{defpredicate (Costs $vendor $item $price)}
+(Costs Apple ibook 1100)
+(Costs IBM thinkpad 1600)
+(Costs Gateway thinkpad 1400)
+(Costs Dell thinkpad 1450)
+(Costs Gateway dell 1500)
+(Costs Dell dell 1400)
+
+
+#############################
+
+{defconstant Head_Honcho_1}
+{defconstant Head_Honcho_2}
+
+(Signing_Authority_For USER Head_Honcho_1)
+(Signing_Authority_For USER Head_Honcho_2)
+
+(Have_Form requisition_form)
+
+
+#############################
+##
+## This way of indicating forms
+## is very clunky -- it will be replaced
+## by SPARK structures when they're
+## added to the SPARKL language (coming soon!)
+##
+{defconstant name}
+{defconstant org}
+{defconstant extension_request}
+{defconstant date}
+{defconstant vendor}
+{defconstant vendor_address}
+{defconstant item_name}
+{defconstant item_number}
+{defconstant item_cost}
+{defconstant item_quantity}
+{defconstant expedite}
+
+(Slot requisition_form name)
+(Slot requisition_form org)
+(Slot requisition_form extension_request)
+(Slot requisition_form date)
+(Slot requisition_form vendor)
+(Slot requisition_form vendor_address)
+(Slot requisition_form item_name)
+(Slot requisition_form item_number)
+(Slot requisition_form item_cost)
+(Slot requisition_form item_quantity)
+(Slot requisition_form expedite)
+
+{defpredicate (Authorizations_Required $kind $number)}
+(Authorizations_Required requisition_form 2)
+
+{defconstant Valerie}
+(Admin_Of USER Valerie)
+
+
+############################
+##
+## Pretty Print predicates
+##
+(Pretty_Printable requisition_form "Requisition Form")
+(Called Head_Honcho_1 "Head Honcho 1")
+(Called Head_Honcho_2 "Head Honcho 2")
+(Called USER "User")

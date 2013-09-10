@@ -1,0 +1,103 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 24 $" *#
+#* $Source: $ *#
+#*****************************************************************************#
+#*****************************************************************************#
+#* Copyright (c) 2004, SRI International.                                    *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+
+#{defpredicate (CanSolve $goal)
+#  doc: "Determines whether the goal is solvable or not"
+#  imp: (pyPredicate "A+" (pyModRaw "spark.io.oaa" "can_solve"))}
+
+#{deffunction (getAgentAddress)
+#  doc: "Get the address of this spark agent."
+#  imp: (pyFunction "A" (pyModRaw "spark.io.oaa" "get_agent_address"))}
+
+#{defpredicate (OnlineAgent $agent)}
+
+#{defpredicate (ConnectedToOAA)
+#  doc: "Determines whether we are connected to the facilitator"
+#  imp: (pyPredicate "A" (pyModRaw "spark.io.oaa" "get_oaa_connection"))}
+
+#{defaction (agentStatus $op $list)
+#  doc: "A trigger has been set up to call this action whenever an agent gets connected to or disconnected from the facilitator."}
+
+#{defaction (oaaSetTrigger $type $triggerterm $actionterm $params)
+#  doc: "Set up a trigger. All parameters can be passed in spark form."
+#  imp: (pyActionThread "A++++" (pyModRaw "spark.io.oaa" "oaa_set_trigger"))}
+
+#{deffunction (getOnlineAgents)
+#  doc: "Get a list of all the agents connected to the facilitator."
+#  imp: (pyFunction "A" (pyModRaw "spark.io.oaa" "get_online_agents"))}
+
+#{defprocedure _agentAddRemoveTrigger
+#  cue: [do: (agentStatus +$op +$list)]
+#  precondition: (or (= $op "add") (= $op "remove"))
+#  body: [select: (=$op "add")    [conclude: (OnlineAgent (index 4 $list))]
+#                 (=$op "remove") [retract: (OnlineAgent (index 4 $list))]]}
+
+#{defaction (oaaAddData $term $params)
+#  doc: "Adds a new data to the facilitator"
+#  imp: (pyActionThread "A++" (pyModRaw "spark.io.oaa" "oaa_add_data"))}
+
+#{defaction (oaaReplaceData $term1 $term2 $params)
+#  doc: "Replace an old data with a new data in the facilitator"
+#  imp: (pyActionThread "A+++" (pyModRaw "spark.io.oaa" "oaa_replace_data"))}
+
+#{defaction (oaaRemoveData $term $params)
+#  doc: "Removes an data from the facilitator"
+#  imp: (pyActionThread "A++" (pyModRaw "spark.io.oaa" "oaa_remove_data"))}
+

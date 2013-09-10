@@ -1,0 +1,301 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 367 $" *#
+#* $Source: /homedir/cvs/cvsroot/spark/src/spark/tests/list_test.spark,v $ *#
+#*****************************************************************************#
+importall: spark.lang.list
+importall: spark.tests.unit
+
+export: list_unit_tests
+
+main: list_unit_tests
+
+{defaction (list_unit_tests $args)}
+
+{defpredicate (List $id $list)
+  imp: (determined "+-")}
+
+# Testing data
+{defconstant a}
+{defconstant b}
+{defconstant c}
+{defconstant d}
+
+(List a ["aleph" "beit" "gimmel"])
+(List b ["foo" "bar"])
+(List c [1 2 3 4 5])
+(List d [])
+
+# Testing procedure
+{defprocedure _list_unit_tests
+  cue: [do: (list_unit_tests $args)]
+  precondition: (Ground $args)
+  body: [seq:
+	  [do: (print "LIST TESTS" [])]
+	  [do: (print "-------------" [])]
+	  [do: (print "Starting list tests..." [])]
+	  [context: (List a $lista)]
+	  [context: (List b $listb)] 
+	  [context: (List c $listc)] 
+	  [context: (List d $listd)] 
+	  [do: (print "Testing printListElements" [])]
+	  [do: (printListElements $lista)]
+	  [do: (print "Testing Index..." [])]
+	  [context: (Index 0 $elt0 $lista)
+		    "index 0 test failed"]
+	  [context: (Index 1 $elt1 $lista)
+		    "index 1 test failed"]
+	  [context: (Index 2 $elt2 $lista)
+		    "index 2 test failed"]
+	  [do: (AssertEquals "aleph" $elt0)]
+	  [do: (AssertEquals "beit" $elt1)]
+	  [do: (AssertEquals "gimmel" $elt2)]
+	  [do: (print "Testing Concat..." [])]
+	  [context: (Concat $lista $listb $listconcat)]
+	  [do: (AssertEquals ["aleph" "beit" "gimmel" "foo" "bar"] $listconcat)]
+	  [do: (print "Testing Length..." [])]
+	  [context: (Length $lista $lena)]
+	  [context: (Length $listb $lenb)]
+	  [context: (Length $listc $lenc)]
+	  [context: (Length $listd $lend)]
+	  [do: (AssertEquals 3 $lena)]
+	  [do: (AssertEquals 2 $lenb)]
+	  [do: (AssertEquals 5 $lenc)]
+	  [do: (AssertEquals 0 $lend)]
+	  [do: (print "Testing Empty..." [])]
+	  [context: (Empty $listd)]
+	  [context: (not (Empty $lista))]
+	  [do: (print "Testing Member..." [])]
+	  [context: (Member 3 $listc)]
+	  [context: (Member $x $listb)]
+	  [do: (print "Member of list b: %s" [$x])]
+	  [do: (print "Testing mapCall..." [])]
+# still need to test mapCall...
+	  [do: (print "Testing Slice List..." [])]
+          [set: $slicec1 (sub $listc 0 2)]
+          [do: (print "First Slice: %s" [$slicec1])]
+	  [do: (AssertEquals 2 (length $slicec1))]
+	  [do: (AssertEquals 1 (index 0 $slicec1))]
+	  [do: (AssertEquals 2 (index 1 $slicec1))]
+          [set: $slicec2 (sub $listc 0 0)]
+
+          [do: (print "Second Slice: %s" [$slicec2])]
+	  [do: (AssertEquals 0 (length $slicec2))]
+
+          [set: $slicec3 (sub $listc 2 3)]
+          [do: (print "Third Slice: %s" [$slicec3])]
+	  [do: (AssertEquals 1 (length $slicec3))]
+	  [do: (AssertEquals 3 (index 0 $slicec3))]
+
+	  [do: (print "List Tests Complete, ALL TESTS SUCCEEDED" [])]]
+}
+
+{defaction (unit_list_elements $args)}
+{defprocedure Unit_List_Elements
+  doc: "Testing printListElements"
+  cue: [do: (unit_list_elements $args)]
+  precondition: (Ground $args)
+  body: 
+  [seq: 
+    [context: (List a $lista)]
+    [try:
+      [do: (printListElements $lista)]
+      [do: (actTestSucceed "unit_list_elements")]
+      [fail: (funcTestFailed "unit_list_elements" "AssertSucceed (1 arg) failed")] []
+    ]
+  ]
+}
+
+{defaction (unit_list_index $args)}
+{defprocedure Unit_List_Index
+  doc: "Testing index"
+  cue: [do: (unit_list_index $args)]
+  precondition: (Ground $args)
+  body: 
+    [seq:
+      [context: (List a $lista)]
+      [context: (List b $listb)] 
+
+	    [do: (print "Testing Index..." [])]
+	    [context: (Index 0 $elt0 $lista)
+	        "index 0 test failed"]
+	    [context: (Index 1 $elt1 $lista)
+	        "index 1 test failed"]
+	    [context: (Index 2 $elt2 $lista)
+	        "index 2 test failed"]
+	    [try:
+		    [seq:
+		      [do: (AssertEquals "aleph" $elt0)]
+		      [do: (AssertEquals "beit" $elt1)]
+		      [do: (AssertEquals "gimmel" $elt2)]
+		    ]
+		    [do: (actTestSucceed "unit_list_index")]
+		    [fail: (funcTestFailed "unit_list_index" "Index failed")]
+		    []
+	    ]
+    ]
+}
+
+{defaction (unit_list_concat $args)}
+{defprocedure Unit_List_Concat
+  doc: "Testing concat"
+  cue: [do: (unit_list_concat $args)]
+  precondition: (Ground $args)
+  body: 
+    [seq:
+      [context: (List a $lista)]
+      [context: (List b $listb)] 
+      [do: (print "Testing Concat..." [])]
+      [context: (Concat $lista $listb $listconcat)]
+      
+      [try:
+          [do: (AssertEquals ["aleph" "beit" "gimmel" "foo" "bar"] $listconcat)]
+          [do: (actTestSucceed "unit_list_concat")]
+          [fail: (funcTestFailed "unit_list_concat" "Concat failed")]
+          []
+      ]
+    ]
+}
+
+{defaction (unit_list_length $args)}
+{defprocedure Unit_List_Length
+  doc: "Testing length"
+  cue: [do: (unit_list_length $args)]
+  precondition: (Ground $args)
+  body: 
+  [seq:
+    [do: (print "Testing Length..." [])]
+    [context: (List a $lista)]
+    [context: (List b $listb)] 
+    [context: (List c $listc)] 
+    [context: (List d $listd)] 
+    [context: (Length $lista $lena)]
+    [context: (Length $listb $lenb)]
+    [context: (Length $listc $lenc)]
+    [context: (Length $listd $lend)]
+    #broken up into two tasks so no more AssertSucceed methods have to be written
+    [set: $lengthtask1 {task [$arg0 $arg1] 
+        [seq:
+	        [do: (AssertEquals 3 $arg0)]
+	        [do: (AssertEquals 2 $arg1)]
+        ] 
+    }]
+      [set: $lengthtask2 {task [$arg2 $arg3] 
+        [seq:
+          [do: (AssertEquals 5 $arg2)]
+          [do: (AssertEquals 0 $arg3)]
+        ] 
+    }]
+
+    [try:
+      [seq:
+        [do: (AssertSucceed2 $lengthtask1 $lena $lenb)]
+        [do: (AssertSucceed2 $lengthtask2 $lenc $lend)]
+      ]
+      [do: (actTestSucceed "unit_list_length")]
+      [fail: (funcTestFailed "unit_list_length" "Length failed")]
+	    []
+    ]
+  ]
+}
+
+{defaction (unit_list_empty $args)}
+{defprocedure Unit_List_Empty
+  doc: "Testing length"
+  cue: [do: (unit_list_empty $args)]
+  precondition: (Ground $args)
+  body: 
+  [seq:
+    [context: (List a $lista)]
+    [context: (List d $listd)]
+    [set: $emptytask {task [$arg0 +$arg1]
+      [seq:
+        [context: (Empty $arg0)]
+        [context: (not (Empty $arg1))]
+      ]
+    }]
+  
+    [try:
+      [do: (AssertSucceed2 $emptytask $listd $lista)]
+      [do: (actTestSucceed "unit_list_empty")]
+      [fail: (funcTestFailed "unit_list_empty" "Empty failed")]
+      []
+    ]
+  ]
+}
+
+{defaction (unit_list_slice $args)}
+{defprocedure Unit_List_Slice
+  doc: "Testing slice"
+  cue: [do: (unit_list_slice $args)]
+  precondition: (Ground $args)
+  body: 
+  [seq:
+    [context: (List c $listc)] 
+    [set: $slicec1 (sub $listc 0 2)]
+    [set: $slicec2 (sub $listc 0 0)]
+    [set: $slicec3 (sub $listc 2 3)]
+    
+    [set: $slice1task {task [+$arg] 
+      [seq:
+        [do: (print "First Slice: %s" [$arg])]
+	      [do: (AssertEquals 2 (length $arg))]
+	      [do: (AssertEquals 1 (index 0 $arg))]
+	      [do: (AssertEquals 2 (index 1 $arg))]
+       
+      ]
+    }]
+  
+    [set: $slice2task {task [+$arg] 
+      [seq:
+        [do: (print "Second Slice: %s" [$arg])]
+        [do: (AssertEquals 0 (length $arg))]
+      ]
+    }]
+  
+    [set: $slice3task {task [+$arg] 
+      [seq:
+        [do: (print "Third Slice: %s" [$arg])]
+        [do: (AssertEquals 1 (length $arg))]
+        [do: (AssertEquals 3 (index 0 $arg))]
+      ]
+    }]
+  
+    [try:
+      [seq:
+        [do: (AssertSucceed1 $slice1task $slicec1)]
+        [do: (AssertSucceed1 $slice2task $slicec2)]
+        [do: (AssertSucceed1 $slice3task $slicec3)]
+      ]
+      [do: (actTestSucceed "unit_list_slice")]
+      [fail: (funcTestFailed "unit_list_slice" "Slice failed")]
+      []
+    ]
+  ]
+}

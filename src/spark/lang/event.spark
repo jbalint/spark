@@ -1,0 +1,110 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 24 $" *#
+#* $Source: /homedir/cvs/cvsroot/spark/src/spark/lang/event.spark,v $ *#
+#*****************************************************************************#
+################################################################
+# Collection of event related predicates
+
+{defpredicate (RecordingAllEvents)
+  doc: "SPARK is recording all events posted for later retrieval using EventPosted.
+Conclude this to start recording, retract it to stop (and forget what was recorded)."
+  imp: (pyModRaw "spark.lang.event" "RecordingAllEvents")}
+
+{defpredicate (EventPosted $event)
+  doc: "The event $event has been posted since (RecordingAllEvents) has become true."
+  imp: (pyModRaw "spark.lang.event" "EventPosted")}
+
+{defpredicate (EventKind $event $kind)
+  doc: "Event $event is of kind $kind (one of \"DO\", \"ACHIEVE\", \"NEWFACT\", or \"UNKNOWN\"."
+  imp: (pyPredicate "+-" (pyModRaw "spark.lang.event" "testEventKind"))}
+
+{defpredicate (EventCompleted $event $result)
+  doc: "The event $event completed with result $result."
+  imp: (pyPredicate "+-" (pyModRaw "spark.lang.event" "testEventCompleted"))}
+
+{defpredicate (SuccessResult $result)
+  doc: "$result indicates success."
+  imp: (pyPredicate "+" (pyModRaw "spark.lang.event" "testSuccessResult"))}
+
+{defpredicate (FailureResult $result)
+  doc: "$result indicates failure."
+  imp: (pyPredicate "+" (pyModRaw "spark.lang.event" "testFailureResult"))}
+
+{defpredicate (EventParent $event $procedureInstance)
+  doc: "The procedure instance that triggered $event is $procedureInstance."
+  imp: (pyPredicate "+-" (pyModRaw "spark.lang.event" "testEventParent"))}
+
+{defpredicate (EventExpr $event $expr)
+  doc: "The procedure expression that triggered task $event is $expr."
+  imp: (pyPredicate "+-" (pyModRaw "spark.lang.event" "testEventExpr"))}
+
+{defpredicate (PICurrentSubgoal $procedureInstance $event)
+  doc: "Procedure instance $procedureInstance has $event as a current subgoal."
+  imp: (pyPredicateSeq "A+-" (pyModRaw "spark.lang.event" "listPICurrentSubgoals"))}
+
+{defpredicate (PICurrentExpr $procedureInstance $expr)
+  doc: "Procedure instance $procedureInstance has $expr as its current step."
+  imp: (pyPredicate "A+-" (pyModRaw "spark.lang.event" "getPICurrentStep"))}
+
+{defpredicate (PITriggeringEvent $procedureInstance $event)
+  doc: "Procedure instance $procedureInstance was triggered by $event."
+  imp: (pyPredicate "+-" (pyMeth "event"))}
+
+{defpredicate (PICurrentValue $procedureInstance $var $value)
+  doc: "In $procedureInstance, the variable $var is bound to $value."
+  imp: (pyPredicateSeq "A+--" (pyModRaw "spark.lang.event" "listPICurrentValues"))}
+
+{defpredicate (PIProcedure $procedureInstance $procedure)
+  doc: "$procedureInstance is an instance of $procedure."
+  imp: (pyPredicate "+-" (pyModRaw "spark.lang.event" "testPIProcedure"))}
+
+{defpredicate (ExprChild $parentExpr $childExpr)
+  doc: "$parentExpr has $childExpr as a subexpression."
+  imp: (pyPredicate "??" (pyModRaw "spark.lang.event" "parentChildExpr"))}
+
+{defpredicate (ExprVariable $expr $variable)
+  doc: "$expr has $variable as a free variable."
+  imp: (pyPredicateSeq "+-" (pyModRaw "spark.lang.event" "listExprVariables"))}
+
+################################################################
+
+{deffunction (eventInputArguments $event)
+  doc: "TEMPORARY - returns the arguments of event that were initially bound"
+  imp: (pyFunction "A+" (pyModRaw "spark.lang.event" "eventInputArguments"))}
+
+################################################################
+
+{defaction (interruptProcedureInstance $pi)
+  doc: "Interrupts a procedure instance, causing it to fail"
+  imp: (pyAction "A+" (pyModRaw "spark.lang.event" "interruptProcedureInstance"))}
+
+################################################################
+exportall:
+

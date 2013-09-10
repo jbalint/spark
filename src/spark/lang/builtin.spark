@@ -1,0 +1,841 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 384 $" *#
+#* $Source: /homedir/cvs/cvsroot/spark/src/spark/lang/builtin.spark,v $ *#
+#*****************************************************************************#
+#{declare |declare{}| keys: ["modes:" "stageOne:" "keys:" "keysRequired:"] keysRequired: 2 modes: ["1=Y:LTLL"] stageOne: "spark.lang.builtin.defStageOneBrace"}
+
+{declare |_module:| modes: ["1=q"]
+  imp: "spark.lang.builtin.ModuleColon"}
+
+_module: spark.lang.builtin
+
+#{deffunction (static)} # can't use deffuntion yet
+{declare static modes: ["+="]
+	 imp: "spark.lang.builtin.Static"}
+{declare |deffunction{}| modes: ["1=D:+++++"]
+	 properties: [(static)]
+  keys: ["imp:" "doc:" "properties:" "argtypes:" "static:"]
+  imp: "spark.lang.builtin.DeffunctionBrace"}
+{deffunction (dynamic)}
+{declare |module:| keys: [] modes: ["1=q"]
+  imp: "spark.lang.builtin.ModuleColon"}
+{declare |package:| keys: [] modes: ["1=q"]
+  imp: "spark.lang.builtin.ModuleColon"}
+
+{declare |importfrom:| keys: [] modes: ["1=q*j"]
+  imp: "spark.lang.builtin.ImportfromColon"}
+
+{declare |special:| keys: [] modes: ["1=q"]
+  imp: "spark.lang.builtin.Special"}
+
+{declare |importall:| modes: ["1=q"]
+  imp: "spark.lang.builtin.ImportallColon"}
+
+{declare |import:| modes: ["1=q"]
+  imp: "spark.lang.builtin.ImportColon"}
+
+{declare |export:| modes: ["1=*j"]
+  imp: "spark.lang.builtin.ExportColon"}
+
+{declare |exportall:| modes: ["1="]
+  imp: "spark.lang.builtin.ExportallColon"}
+
+{declare |requires:| modes: ["1=q"]
+  imp: "spark.lang.builtin.RequiresColon"}
+
+{declare |include:| modes: ["1=q"]
+  imp: "spark.lang.builtin.RequiresColon"}
+
+{declare if modes: ["-=s--" "+=s++"]
+	 properties: [(static)]
+	 imp: "spark.lang.builtin.TermIf"
+	 combiner: "spark.internal.parse.combiner.COND_LIKE"}
+## {declare solutions modes: ["+=vs"]
+## 	 imp: "spark.lang.builtin.Solutions"
+## 	 combiner: "spark.internal.parse.combiner.LOCALS"}
+## {declare |solutions{}| modes: ["+=vs"]
+## 	 imp: "spark.lang.builtin.Solutions"
+## 	 combiner: "spark.internal.parse.combiner.LOCALS"}
+{declare solutionspat modes: ["+=vs+"]
+	 properties: [(static)]
+	 imp: "spark.lang.builtin.SolutionsPat"
+	 combiner: "spark.internal.parse.combiner.LOCALS"}
+{declare solutionspred modes: ["+=s+"]
+	 properties: [(static)]
+	 imp: "spark.lang.builtin.SolutionsPred"
+	 combiner: "spark.internal.parse.combiner.SERIAL"}
+{declare applyfun modes: ["+=+*+"]
+	 properties: [(dynamic)] # the function applied may be dynamic
+	 imp: "spark.internal.repr.closure.ApplyFun"}
+{declare |fun{}| modes: ["+=v+" "L=RR"] # ACTIVITY IS NOT STRICTLY CORRECT
+	 properties: [(static)]
+	 imp: "spark.internal.repr.closure.FunClosureImp"
+	 combiner: "spark.internal.parse.combiner.SERIAL"}
+#{declare |proc{}| keys: ... modes: ...}
+{declare |pred{}| modes: ["+=fs" "L=RR"] # ACTIVITY IS NOT STRICTLY CORRECT
+	 properties: [(static)]
+	 imp: "spark.internal.repr.closure.PredClosureImp"
+	 combiner: "spark.internal.parse.combiner.SERIAL"}
+{declare |task{}| modes: ["+=fx" "L=RR"] # ACTIVITY IS NOT STRICTLY CORRECT
+	 properties: [(static)]
+	 imp: "spark.internal.repr.closure.TaskClosureImp"
+	 combiner: "spark.internal.parse.combiner.SERIAL"}
+{declare |proc{}| modes: ["+=f:sx+++q" "L=R:RRLLLL"] # ACTIVITY IS NOT STRICTLY CORRECT
+	 properties: [(static)]
+	 imp: "spark.internal.repr.procedure.ProcClosureImp"
+	 combiner: "spark.internal.parse.combiner.SERIAL" #TODO: this is not perfectly correct
+	 keys: ["precondition:" "body:" "doc:" "properties:" "features:" "roles:"]
+	 keysRequired: ["body:"]
+}
+
+{declare |`#| modes: ["-=k" "+=q"]
+	 properties: [(static)]
+	 imp: "spark.lang.builtin.BackquotePrefix"}
+{declare |,#| modes: ["k=-" "q=+"]
+	 properties: [(static)]
+	 imp: "spark.lang.builtin.CommaPrefix"}
+{declare |+#| modes: ["g=-"]
+	 properties: [(static)]
+	 imp: "spark.lang.builtin.PlusPrefix"}
+{declare |-#| modes: ["g=+"]
+	 properties: [(static)]
+	 imp: "spark.lang.builtin.MinusPrefix"}
+{declare qent modes: ["+=j"]
+	 properties: [(static)]
+	 imp: "spark.lang.builtin.Qent"}
+# ignore qpath
+# ignore pyPath
+{declare ApplyPred modes: ["s=+*-" "r=+*-" "u=+*+"]
+	 properties: [(dynamic)]
+	 imp: "spark.internal.repr.closure.ApplyPred"}
+{declare applypred modes: ["s=+*-" "r=+*-" "u=+*+"]
+	 properties: [(dynamic)]
+	 imp: "spark.internal.repr.closure.ApplyPred"}
+{declare True modes: ["s="]
+	 properties: [(static)]
+	 imp: "spark.lang.builtin.PredTrue"}
+{declare False modes: ["s="]
+	 properties: [(static)]
+	 imp: "spark.lang.builtin.PredFalse"}
+## {declare true modes: ["+="]
+## 	 properties: [(static)]
+## 	 imp: "spark.lang.builtin.funTrue"}
+## {declare false modes: ["+="]
+## 	 properties: [(static)]
+## 	 imp: "spark.lang.builtin.funFalse"}
+{declare and modes: ["s=*s" "u=*u"]
+	 properties: [(static)]
+	 imp: "spark.lang.builtin.And"
+	 combiner: "spark.internal.parse.combiner.SERIAL"}
+{declare or modes: ["s=*s" "u=*u"]
+	 properties: [(static)]
+	 imp: "spark.lang.builtin.Or"
+	 combiner: "spark.internal.parse.combiner.DISJUNCTIVE"}
+{declare not modes: ["s=s" "u=r"]
+	 properties: [(static)]
+	 imp: "spark.lang.builtin.Not"
+	 combiner: "spark.internal.parse.combiner.NEGATED"}
+
+# ignore ptrace
+{declare once modes: ["s=s"]
+	 properties: [(static)]
+	 imp: "spark.lang.builtin.Once"}
+{declare exists modes: ["s=vs" "u=vr"]
+	 properties: [(static)]
+	 imp: "spark.lang.builtin.Exists"
+	 combiner: "spark.internal.parse.combiner.QUANTIFIED"}
+# ignore label:
+{declare |context:| modes: ["x=s*+"]
+	 # NOTE: the combiner is not right, the *e are only evaluated
+	 # if no solution to s.
+	 imp: "spark.internal.repr.taskexpr.ContextColon"}
+{declare |properties:| modes: ["x=+"]
+	 # NOTE: The properties argument isn't ever
+	 # evaluated. However, we do want to make sure that all
+	 # property functors are defined.
+	 #TODO: Add the new static-evaluable usage and use it here
+	 doc: "Associate properties with the enclosing task expression list.
+The argument should be a list of the form [(prop1 <val1>) ...]
+where prop1 is declared by a deffunction with no imp:
+and <val1> is a string, number, or list of these.
+If you put in anything else, it won't be detected at load time
+and this will lead to hard-to-track-down errors."
+	 imp: "spark.internal.repr.taskexpr.SucceedColon"}
+# ignore comment:
+{declare |conclude:| modes: ["x=u"]
+	 imp: "spark.internal.repr.taskexpr.ConcludeColon"}
+{declare |retract:| modes: ["x=u"]
+	 imp: "spark.internal.repr.taskexpr.RetractColon"}
+{declare |retractall:| modes: ["x=vr"]
+	 combiner: "spark.internal.parse.combiner.LOCALS"
+	 imp: "spark.internal.repr.taskexpr.RetractallColon"}
+{declare |do:| modes: ["x=d" "c=f"]
+	 imp: "spark.internal.repr.taskexpr.DoColon"}
+{declare |achieve:| modes: ["x=a" "c=f"]
+	 imp: "spark.internal.repr.taskexpr.AchieveColon"}
+{declare |newfact:| modes: ["c=f"]
+	 imp: "spark.internal.repr.taskexpr.NewFactColon"}
+{declare |synchronous:| modes: ["c=f"]
+	 imp: "spark.internal.repr.taskexpr.SynchronousColon"}
+{declare |succeed:| modes: ["x="]
+	 imp: "spark.internal.repr.taskexpr.SucceedColon"}
+{declare |noop:| modes: ["x="]
+	 imp: "spark.internal.repr.taskexpr.SucceedColon"}
+{declare |fail:| modes: ["x=+"]
+	 imp: "spark.internal.repr.taskexpr.FailColon"}
+{declare |seq:| modes: ["x=*x"]
+	 imp: "spark.internal.repr.taskexpr.SeqColon"
+	 combiner: "spark.internal.parse.combiner.SERIAL"}
+{declare |or:| modes: ["x=*x"]
+	 imp: "spark.internal.repr.taskexpr.OrColon"
+	 combiner: "spark.internal.parse.combiner.DISJUNCTIVE"}
+{declare |contiguous:| modes: ["x=*x"]
+	 imp: "spark.internal.repr.taskexpr.ContiguousColon"
+	 combiner: "spark.internal.parse.combiner.SERIAL"}
+{declare |parallel:| modes: ["x=*x"]
+	 imp: "spark.internal.repr.taskexpr.ParallelColon"}
+{declare |select:| modes: ["x=*sx"]
+	 imp: "spark.internal.repr.taskexpr.SelectColon"
+	 combiner: "spark.internal.parse.combiner.COND_LIKE"}
+{declare |set:| modes: ["x=-+"]
+	 imp: "spark.internal.repr.taskexpr.SetColon"}
+{declare |wait:| modes: ["x=*sx"]
+	 imp: "spark.internal.repr.taskexpr.WaitColon"
+	 combiner: "spark.internal.parse.combiner.COND_LIKE"}
+{declare |forall:| modes: ["x=vsx"]
+	 imp: "spark.internal.repr.taskexpr.ForallColon"
+	 combiner: "spark.internal.parse.combiner.LOCALS"}
+{declare |forallp:| modes: ["x=vsx"]
+	 imp: "spark.internal.repr.taskexpr.ForallpColon"
+	 combiner: "spark.internal.parse.combiner.LOCALS"}
+{declare |forin:| modes: ["x=-+x*+-"]
+	 imp: "spark.internal.repr.taskexpr.ForinColon"
+	 # tricky
+	 combiner: "spark.internal.parse.combiner.FORIN"}
+{declare |while:| modes: ["x=vsx"]
+	 imp: "spark.internal.repr.taskexpr.WhileColon"
+	 combiner: "spark.internal.parse.combiner.LOCALS"}
+{declare |try:| modes: ["x=*xx"]
+	 imp: "spark.internal.repr.taskexpr.TryColon"
+	 combiner: "spark.internal.parse.combiner.COND_LIKE"}
+{declare |tryexcept:| modes: ["x=xx*-x"]
+	 imp: "spark.internal.repr.taskexpr.TryexceptColon"
+	 combiner: "spark.internal.parse.combiner.COND_LIKE"}
+{declare |defconstant{}| modes: ["1=j:+++"]
+	 properties: [(static)]
+  keys: ["imp:" "doc:" "properties:"]
+  imp: "spark.lang.builtin.DefconstantBrace"}
+{declare |defaction{}| modes: ["1=D:+++++q"]
+	 properties: [(static)]
+  keys: ["imp:" "doc:" "properties:" "features:" "argtypes:" "roles:"]
+  imp: "spark.lang.builtin.DefactionBrace"}
+{declare |defpredicate{}| modes: ["1=D:+++++"]
+	 properties: [(static)]
+  keys: ["imp:" "doc:" "properties:" "argtypes:" "static:"]
+  imp: "spark.lang.builtin.DefpredicateBrace"}
+{declare |defprocedure{}| modes: ["1=j:lsx+++q" "L=L:RRRLLLL"]
+	 combiner: "spark.internal.parse.combiner.DEFPROCEDURE"
+	 properties: [(static)]
+  keys: ["cue:" "precondition:" "body:" "doc:" "properties:" "features:" "roles:"]
+  keysRequired: ["cue:" "body:"]
+  imp: "spark.lang.builtin.DefprocedureBrace"}
+{declare |defadvice{}| modes: ["1=j+vsvs:+" "L=LLRRRR:R"]
+  keys: ["doc:"]
+	 properties: [(static)]
+  imp: "spark.lang.builtin.DefadviceBrace"
+  combiner: "spark.internal.parse.combiner.SERIAL"}
+{declare |defconsult{}| modes: ["1=jvvs:+"]
+  keys: ["doc:"]
+	 properties: [(static)]
+  imp: "spark.lang.builtin.DefconsultBrace"
+  combiner: "spark.internal.parse.combiner.SERIAL"}
+
+{declare |main:| modes: ["1=j"]
+  imp: "spark.lang.builtin.MainColon"}
+
+
+## Must define the following specially to avoid a bootstrapping problem 
+
+{defpredicate (Doc $symbol $docstring)}
+
+# pyFunction and pyMod need to be defined without pyMod
+
+{declare Implementation modes: ["s=+-" "u=++"]
+	 imp: "spark.lang.builtin.Implementation"}
+
+{declare pyFunction modes:["+=++"]
+#{deffunction (pyFunction $mode $fun)
+#  doc: "Function implemented in python"
+#  static: true
+	 properties: [(static)]
+  imp: "spark.lang.builtin.PyFunction"}
+#  imp: (pyPath spark.lang.builtin.pyFunction)}
+
+{declare pyMod modes: ["+=++"]
+#{deffunction (pyMod $modname $name)
+#  doc: "Value extracted from a python module"
+#  static: true
+	 properties: [(dynamic)]
+  imp: "spark.lang.builtin.PyMod"}
+
+{declare pyModRaw modes: ["+=++"]
+#{deffunction (pyModRaw $modname $name)
+#  doc: "Value extracted from a python module"
+#  static: true
+	 properties: [(dynamic)]
+  imp: "spark.lang.builtin.PyModRaw"}
+
+
+{deffunction (pyReversible $mode $fun $inverse_fun)
+  doc: "Function implemented in python"
+#  static: true
+  properties: [(static)]
+  imp: (pyFunction "+++" (pyModRaw "spark.lang.builtin" "ReversibleFun"))}
+
+{defpredicate (Features $symbol $featurelist)
+  properties: [(static)]		# really monotonic
+  doc: "Feature list associated with an action symbol"}
+
+{defpredicate (Properties $symbol $propertylist)
+  properties: [(static)]		# really monotonic
+  doc: "Properties associated with a symbol"}
+
+{defpredicate (ArgTypes $symbol $argtypes)
+  properties: [(static)]		# really monotonic
+  doc: "Argument types associated with a symbol"}
+
+{defpredicate (Roles $symbol $rolevars)
+  properties: [(static)]		# really monotonic
+  doc: "Roles associated with variables"}
+
+
+{deffunction (pyMeth $methodname)
+  doc: "Value extracted through attribute access"
+  properties: [(static)]		# the "same" imp is returned each time
+  imp: (pyFunction "+" (pyModRaw "spark.lang.builtin" "Method"))}
+    
+{deffunction (pyPredicate $mode $function)
+  doc: "predicate implemented in python"
+  properties: [(static)]		# the "same" imp is returned each time
+  imp: (pyFunction "++" (pyModRaw "spark.lang.builtin" "BasicPred"))}
+
+{deffunction (multiModal rest: $implementations)
+  doc: "predicate implemented with multiple modes"
+  properties: [(static)]		# the "same" imp is returned each time
+  imp: (pyFunction "+*" (pyModRaw "spark.lang.builtin" "MultiModalPred"))}
+
+{deffunction (pyPredicateSeq $mode $function)
+  doc: "predicate implemented in python returning sequence of solution"
+  properties: [(static)]		# the "same" imp is returned each time
+  imp: (pyFunction "++" (pyModRaw "spark.lang.builtin" "BasicPredSequence"))}
+
+{deffunction (determined rest: $determinedModes)
+  doc: "An predicate implementation prototype that stores a predicate as a
+set of facts. The $determinedModes are mode strings for which the predicate
+is only allowed to return a single solution. If a new fact is asserted that
+would violate these constrints, then the old fact(s) are removed."
+  properties: [(static)]		# the "same" imp is returned each time
+  imp: (pyFunction "+*" (pyModRaw "spark.pylang.defaultimp" "DeterminedPredImp"))}
+
+{deffunction (pyAction $mode $function) # maybe change to pyAction_immediate
+  doc: "action implemented in python"
+  properties: [(static)]		# the "same" imp is returned each time
+  imp: (pyFunction "++" (pyModRaw "spark.lang.builtin" "BasicAct"))}
+
+{deffunction (pyActionThread $mode $function)
+  doc: "action implemented in python"
+  properties: [(static)]		# the "same" imp is returned each time
+  imp: (pyFunction "++" (pyModRaw "spark.lang.builtin" "ThreadAct"))}
+
+{deffunction (@ $entityid)
+  doc: "Entity with given id"
+  properties: [(static)]
+  imp: (pyReversible "+"
+		      (pyModRaw "spark.lang.builtin" "Symbol")
+		      (pyModRaw "spark.lang.builtin" "symbol_absname"))}
+
+{deffunction (@@ $functorid rest: $args)
+  doc: "Structure with given functorid"
+  properties: [(static)]
+#  static: true 
+  imp: (pyReversible "+*"
+		      (pyModRaw "spark.lang.builtin" "construct_struct")
+		      (pyModRaw "spark.lang.builtin" "deconstruct_struct"))}
+
+{deffunction (functorString $struct) 
+  doc: "Get name of functor"
+  properties: [(static)]
+#  static: true 
+  imp: (pyFunction "+" (pyModRaw "spark.lang.builtin" "get_functor_string"))}
+
+{deffunction (functor $struct)
+  doc: "Get name of functor"
+  properties: [(static)]
+#  static: true
+  imp: (pyFunction "+" (pyModRaw "spark.lang.builtin" "get_functor"))}
+
+{deffunction (args $struct)
+  doc: "Get arguments of a structure as a list"
+  properties: [(static)]
+  imp: (pyFunction "+" (pyModRaw "spark.lang.builtin" "get_args"))}
+
+    
+{deffunction (pyEval $python_expression)
+  doc: "Value from evaluating a Python string"
+  properties: [(dynamic)]
+#  static: true
+  imp: (pyFunction "+" (pyModRaw "__builtin__" "eval"))}
+
+
+{defpredicate (SOAPI $event $tframes)
+  doc: "Event 'predicate' indicating a set of applicable procedure instances"}
+
+{defpredicate (AppliedAdvice $task $advice_label)
+  doc: "Event 'predicate' advice was used in the selection of procedures for $task"}
+
+{defpredicate (AdoptedTask $task)
+  doc: "Event 'predicate' a do goal was posted"}
+
+{defpredicate (CompletedTask $task)
+  doc: "Event 'predicate' a do goal succeeded"}
+
+{defpredicate (FailedTask $task $reason)
+  doc: "Event 'predicate' a do goal failed"}
+
+{defpredicate (StartedProcedure $ptframe)
+  doc: "Procedure TFrame has been intended (cue for asynchronous procedure)"}
+
+{defpredicate (StartedProcedureSynchronous $ptframe)
+  doc: "Procedure TFrame has been intended (cue for synchronous procedure)"}
+
+{defpredicate (CompletedProcedure $ptframe)
+  doc: "Procedure TFrame has succeeded"}
+
+{defpredicate (FailedProcedure $ptframe $reason)
+  doc: "Procedure TFrame has failed"}
+
+{defpredicate (Advice $label $kind $gppc $doc)
+  doc: "Procedure TFrame has failed"}
+
+{defpredicate (Consult $label $event_tframes_pc)
+  doc: "Procedure TFrame has failed"}
+
+{defaction (consultUser $a $b $c $d $e)
+  doc: ""}
+
+{defpredicate (NewFact $predsymbol $procedure $name)
+  doc: "$procedure is to be invoked whenever a new fact is added"}
+
+{defpredicate (Achieve $predsymbol $procedure $name)
+  doc: "$procedure is to be invoked to achieve a predicate"
+  #imp: (determined "+-+") # Procedures for an achieve must have unique names
+  }
+
+{defpredicate (Do $actsymbol $procedure $name)
+  doc: "$procedure is to be invoked to do a named task"
+  # We would like there to be only one procedure per name
+  # However we want it to be an error for a new procedure to be asserted
+  # we do not want silent replacement.
+  #imp: (determined "+-+") # Procedures for an action must have unique names
+  }
+
+{defpredicate (LoadedFileFacts $filename $asserted $retracted)
+  doc: "List of facts $asserted and $retracted by loading file $filename"
+  }
+
+{defpredicate (LoadedFileObjects $filename $spuIndex $objectsList)
+  doc: "SPARK INTERNAL PREDICATE.
+List of objects used in the persistence file for the SPU
+$filename.  The fact has two uses. Firstly, persisting this predicate
+will ensure that all the objects that have been referenced in the
+per-SPU persistence files will be persisted. Secondly, the per-SPU
+persistence file names for SPUs still loaded can be generated from the
+$spuIndex of each fact."  }
+
+{defpredicate (PersistenceIncarnation $incarnationNumber)
+  doc: "This is the number of times an agent has been resumed"
+  imp: (determined "-")}
+(PersistenceIncarnation 0)
+
+{defaction (applyact +$action rest: $args)
+  doc: "Apply the given action to the arguments"
+  imp: (pyModRaw "spark.lang.builtin" "ApplyAct")}
+
+# Add default meta-level procedure
+(NewFact (qent SOAPI) (pyModRaw "spark.lang.builtin" "MP2") "Fact-invoked-meta")
+
+{defpredicate (NumRequiredArgs $symbol $numargs)
+  properties: [(static)]		# really monotonic
+  doc: "The number of arguments that must always be present for $symbol"
+  imp: (pyPredicate "A+-" (pyModRaw "spark.lang.builtin" "numrequiredargs"))}
+
+{defpredicate (RestArgsAllowed $symbol)
+  doc: "Are an arbitrary number of extra arguments allowed for $symbol"
+  properties: [(static)]		# really monotonic
+  imp: (pyPredicate "A+" (pyModRaw "spark.lang.builtin" "restargsallowed"))}
+
+{defpredicate (ArgNames $symbol $args)
+  properties: [(static)]		# really monotonic
+  doc: "The names of arguments for $symbol"}
+
+{defpredicate (RequiredArgNames $symbol $args)
+  doc: "The arguments that must always be present for $symbol"
+  properties: [(static)]		# really monotonic
+  imp: (pyPredicate "A+-" (pyModRaw "spark.lang.builtin" "requiredargnames"))}
+
+{defpredicate (RestArgNames $symbol $arg)
+  doc: "The names of extra arguments allowed for $symbol"
+  properties: [(static)]		# really monotonic
+  imp: (pyPredicate "A+-" (pyModRaw "spark.lang.builtin" "restargnames"))}
+
+{defaction (loadModpath +$modpath)
+  doc: "Load the given module if it is not already loaded"
+  imp: (pyAction "A+" (pyMeth "load_modpath"))}
+
+{defaction (unloadModpath +$modpath)
+  doc: "Unload the declarations from the given module and anything that depends upon that module"
+  imp: (pyAction "A+" (pyMeth "unload_modpath"))}
+
+{defpredicate (PersistSourceCounter $counter)
+ imp: (pyModRaw "spark.pylang.simpleimp" "CounterImp")
+ doc: "Counter for persisting spark-l sources. Internal use only."}
+
+{deffunction (getAttr $obj $attr_name)
+  doc: "Get the specified attribute of the object (Python or JavaBean attribute)."
+  properties: [(dynamic)]
+  imp: (pyFunction "++" (pyModRaw "spark.lang.builtin" "get_attribute"))
+}
+{deffunction (getAttrDefault $obj $attr_name $defaultValue)
+  doc: "Get the specified attribute of the object (Python or JavaBean attribute) or return defaultValue if attribute is None."
+  properties: [(dynamic)]
+  imp: (pyFunction "+++" (pyModRaw "spark.lang.builtin" "get_attribute_default"))
+}
+
+{defaction (setAttr +$obj +$attr_name +$attr_val)
+  doc: "Set the specified attribute of the object (Python or JavaBean attribute)."
+  imp: (pyAction "+++" (pyModRaw "spark.lang.builtin" "set_attribute"))
+}
+
+{defpredicate (Ground $var) 
+  doc: "Non-logical predicate to test whether its argument is Ground"
+  properties: [(static)]
+  imp: (pyPredicate "?" (pyModRaw "spark.lang.builtin" "testGround1"))}
+
+{declare |=| modes: ["s%--" "s=+-" "s=-+"]
+  argnames: ["arg1" "arg2"]
+  properties: [(static)]
+	 imp: "spark.lang.builtin.Equality"}
+## {defpredicate (= $x $y)
+##   doc: "Are $x and $y equal?"
+##   imp: (multiModal 
+## 	(pyPredicate "+-" (pyModRaw "spark.lang.builtin" "identity"))
+## 	(pyPredicate "-+" (pyModRaw "spark.lang.builtin" "identity")))}
+
+########### Defining NULL for Spark:
+#           Use sparkNULL() defined in builtin.py in order to get the Symbol instance for NULL
+{defconstant NULL}
+###################################
+
+{defpredicate (!= +$x +$y)
+  doc: "Are $x and $y not equal?"
+  properties: [(static)]
+  imp: (pyPredicate "++" (pyModRaw "operator" "__ne__"))}
+
+{defaction (print +$format +$values)
+  doc: "Formatted print - $format is a Python format string and $values is a list of values."
+  imp: (pyAction "++" (pyModRaw "spark.lang.builtin" "prin"))}
+
+{defpredicate (Print +$format rest: +$values)
+  doc: "Formatted print - $format is a Python format string and $values is a list of values."
+  properties: [(static)]
+  imp: (pyPredicate "++*" (pyModRaw "spark.lang.builtin" "print_predicate"))}
+
+{defaction (sleep +$seconds)
+  doc: "Sleep for the specified number of seconds"
+  imp: (pyActionThread "+" (pyModRaw "spark.util.time_sim" "sleep"))}
+
+{deffunction (+ $x $y)
+  doc: "Return the sum of $x and $y."
+  properties: [(static)]
+  imp: (pyFunction "++" (pyModRaw "operator" "__add__"))}
+
+{deffunction (- $x $y)
+  doc: "Return the difference of $x and $y."
+  properties: [(static)]
+  imp: (pyFunction "++" (pyModRaw "operator" "__sub__"))}
+
+{deffunction (* $x $y)
+  doc: "Return the product of $x and $y."
+  properties: [(static)]
+  imp: (pyFunction "++" (pyModRaw "operator" "__mul__"))}
+
+{deffunction (/ $x $y)
+  doc: "Return the quotient of $x divided by $y."
+  properties: [(static)]
+  imp: (pyFunction "++" (pyModRaw "operator" "__truediv__"))}
+
+{deffunction (// $x $y)
+  doc: "Return the floor of the quotient of $x divided by $y (integer division)."
+  properties: [(static)]
+  imp: (pyFunction "++" (pyModRaw "operator" "__floordiv__"))}
+
+{deffunction (mod $x $y)
+  doc: "Return $x modulo $y."
+  properties: [(static)]
+  imp: (pyFunction "++" (pyModRaw "operator" "__mod__"))}
+
+{deffunction (min $x $y rest: $args)
+  properties: [(static)]
+  imp: (pyFunction "+*" (pyModRaw "__builtin__" "min"))}
+
+{deffunction (max $x $y rest: $args)
+  properties: [(static)]
+  imp: (pyFunction "+*" (pyModRaw "__builtin__" "max"))}
+
+{defpredicate (> +$x +$y)
+  doc: "Is $x greater than $y?"
+  properties: [(static)]
+  imp: (pyPredicate "++" (pyModRaw "operator" "__gt__"))}
+{defpredicate (>= +$x +$y)
+  doc: "Is $x greater than or equal to $y?"
+  properties: [(static)]
+  imp: (pyPredicate "++" (pyModRaw "operator" "__ge__"))}
+{defpredicate (< +$x +$y)
+  doc: "Is $x less than $y?"
+  properties: [(static)]
+  imp: (pyPredicate "++" (pyModRaw "operator" "__lt__"))}
+{defpredicate (<= +$x +$y)
+  doc: "Is $x less than or equal to $y?"
+  properties: [(static)]
+  imp: (pyPredicate "++" (pyModRaw "operator" "__le__"))}
+
+{defpredicate (IntBetween +$low $x +$high)
+  doc: "$x is an integer such that $low <= $x < $high"
+  properties: [(static)]
+  imp: (pyPredicate "+?+" (pyModRaw "spark.lang.builtin" "intbetween"))}
+
+{deffunction (arg $struct $index)
+  doc: "return the $index-th argument of a structure"
+#  static: true
+  properties: [(static)]
+  imp: (pyFunction "++" (pyModRaw "spark.lang.builtin" "arg"))}
+
+{deffunction (builtinEvaluate $value)
+  doc: "evaluate $value as if it were an expression, using only builtin functions, backquote, and comma"
+  properties: [(static)]		# should be static but possibly not
+  imp: (pyFunction "A+" (pyModRaw "spark.lang.builtin_eval" "builtin_evaluate"))}
+
+{deffunction (builtinQuoted $value)
+  doc: "evaluate $value as if it were a quoted expression, using only builtin functions, backquote, and comma"
+  properties: [(static)]
+  imp: (pyFunction "A+" (pyModRaw "spark.lang.builtin_eval" "builtin_quoted"))}
+
+{deffunction (objectType $value)
+  doc: "return the object type as a string"
+  properties: [(static)]
+  imp: (pyFunction "+" (pyModRaw "spark.lang.builtin" "object_type"))}
+
+
+
+{defpredicate (ObjectExists $idnumber $classname $initargs)
+  doc: "predicate used only for persistence to save the init arguments of persistent objects"
+  properties: [(dynamic)]
+  imp: (pyModRaw "spark.internal.parse.basicvalues" "ObjectExists")}
+
+
+{defpredicate (ObjectState $idnumber $stateargs)
+  doc: "predicate used only for persistence to save the dynamic state of persistent objects"
+  properties: [(dynamic)]
+  imp: (pyModRaw "spark.internal.parse.basicvalues" "ObjectState")}
+
+
+{defpredicate (ObjectNextId $idnumber)
+  doc: "The next available object id"
+  properties: [(dynamic)]
+  imp: (pyModRaw "spark.internal.parse.basicvalues" "ObjectNextId")}
+
+{deffunction (idExpr $exprIndex)
+  doc: "Return the Expr with index $exprIndex"
+  imp: (pyFunction "+" (pyModRaw "spark.internal.parse.expr" "idExpr"))}
+
+{deffunction (idObject $idnumber)
+  doc: ""
+  properties: [(static)]
+  imp: (pyFunction "A+" (pyModRaw "spark.internal.parse.basicvalues" "idObject"))}
+
+{defpredicate (ObjectId $obj $id)
+  doc: ""
+  properties: [(static)]
+  imp: (pyPredicate "A??" (pyModRaw "spark.internal.parse.basicvalues" "get_object_id"))}
+
+
+{defpredicate (CurrentlyIntended $tframe)
+  doc: "$tframe is in the intention structure"
+  properties: [(dynamic)]
+  imp: (pyModRaw "spark.internal.engine.agent" "CurrentlyIntended")}
+
+{deffunction (failure $classname $tframe $value)
+  doc: ""
+  properties: [(static)]
+  imp: (pyReversible "+++" (pyModRaw "spark.internal.exception" "constructFailure")
+		     (pyModRaw "spark.internal.exception" "deconstructFailure"))}
+
+## {deffunction (moduleNamed $namestring)
+##   doc: "Find (without installing) the module"
+##   imp: (pyReversible "+"
+## 	   (pyModRaw "spark.internal.engine.find_module" "moduleNamed")
+## 	   (pyModRaw "spark.internal.engine.find_module" "moduleNamedInverse"))}
+
+
+{deffunction (displayString $displayFormatString)
+  properties: [(static)]
+  doc: "Property for tasks to indicate that (1) task execution should be displayed to the user and (2) how to display this task."
+  }
+
+{defpredicate (NewSparkAgent $name)
+  properties: [(dynamic)]
+  doc: "ephemeral predicate that is raised when agent resumes from a persisted state"
+  }
+
+{defpredicate (SparkAgentRestored $name)
+  properties: [(dynamic)]
+  doc: "ephemeral predicate that is raised when agent resumes from a persisted state"
+  }
+#================== List and String common functions:
+{deffunction (concat $x $y rest: $args)
+  imp: (pyFunction "++*" (pyModRaw "spark.lang.builtin" "concatanate"))}
+
+{defpredicate (Concat $item1 $item2 $itemfull)
+  doc: "concatenate 2 lists or strings"
+  #static: true 
+  properties: [(static)]
+  imp: (pyPredicate "++-" (pyModRaw "spark.lang.builtin" "concatanate"))}
+
+{deffunction (length $arg)
+  properties: [(static)]
+  imp: (pyFunction "+" (pyModRaw "__builtin__" "len"))}
+
+{defpredicate (Length $item $length)
+  doc: "find the length of the list"
+  #static: true 
+  # Note: if we extend length to mutable objects, it will be dynamic
+  properties: [(static)]
+  imp: (pyPredicate "+-" (pyModRaw "__builtin__" "len"))}
+
+#function version of Index
+{deffunction (index $index $item)
+ doc: "return the element with the specified index in a list or a string"
+ properties: [(static)]
+ imp: (pyFunction "++" (pyModRaw "spark.lang.builtin" "item_index"))
+}
+
+{defpredicate (Index $index $elt $item)
+ doc: "return the specified index in a list or a string"
+ #static: true
+  properties: [(static)]
+ imp: (pyPredicateSeq "??+" (pyModRaw "spark.lang.builtin" "index_function"))}
+ 
+{deffunction (sub $item $start $end)
+ doc: "Get a new sublist or substring of $item from $start to $end."
+ properties: [(static)]
+ imp: (pyFunction "+++" (pyModRaw "spark.lang.builtin" "subitem"))
+}
+exportall:
+
+{defpredicate (SymbolPackage $symbol $package)
+  imp: (pyPredicate "+-" (pyModRaw "spark.lang.builtin" "symbolPackage"))}
+
+################################################################
+# Object Properties
+
+{defpredicate (ObjectProperty $object $propertyName $value)
+  doc: "Association arbitrary information with an object (an instance of ConstructibleValue). Use conclude:/retract:/retractall: to modify the associations. For the special case of concluding where $propertyName is an empty list, $value must be a list of [<propName> <value>] pairs or [<propName>] singletons, indicating a group of property values to set or unset respectively. This has an effect on the behavior of the ObjectProperty change listeners."
+  imp: (pyModRaw "spark.lang.builtinObjectProperty" "ObjectPropertyImp")} #class
+
+{deffunction (pyPropertyPredicate $propertyName)
+  doc: "Returns a predicate implementation generator equivalent to {pred [$object $value] (ObjectProperty $object $$propertyName $value)}"
+  imp: (pyFunction "+" (pyModRaw "spark.lang.builtinObjectProperty" "PyPropertyPredicateImp"))}
+
+
+
+{defpredicate (ObjectPropertyChangeListener $propertyName $pythonFunction)
+	doc: "$pythonFunction is a Python function called with the agent, object, propertyName, and value (or None) as arguments when the value of the $propertyName property of an object has changed (or been unset). Associating it with a property means that independent programmers can add their own properties (assuming they choose different names) without accidentally getting their listener called when a different property is set. For the special case of $propertyName is the empty list, the function will be called with the value being a SPARK List of SPARK [<propname> <value>] pairs or [<propname> None] pairs, being all those properties changed/unset *at the same time*. Note that for any property value change, both the property-specific and the generic listeners will be called. If more than one property is changed at once, the generic listeners will be called only once."}
+
+## {defconstant PROP1}
+## {defpredicate (Prop1 $obj $val)
+##   imp: (pyPropertyPredicate PROP1)}
+## (ObjectPropertyChangeListener PROP1 (pyModRaw "spark.lang.builtinObjectProperty" "printListener"))
+
+{declare @- modes: ["-=+"]
+	 doc: "Set value of global variable. Argument is a symbol or string, e.g., x. The value is accessible from Python as V.x."
+	 imp: "spark.lang.builtin.GlobalSet"}
+
+{declare @+ modes: ["+=+"]
+	 doc: "Get value of global variable. Argument is a symbol or string, e.g., x. The value is accessible from Python as V.x."
+	 imp: "spark.lang.builtin.GlobalGet"}
+
+################################################################
+# Handling partial sequences, i.e., those with "missing" (i.e., null)
+# elements.  A SPARK List [1 2 () 4 5] has length 5 but getting the 3rd
+# element will fail.
+#
+# The following function is needed in builtin so the partial function
+# is always available for use in reconstructing a partial sequence
+# that has been saved using inverse_eval. It could be put into a
+# separate utility module (spark.lang.list?) if the () syntax were
+# recognised during parsing.
+
+{deffunction (partial $fullSeq $nullValue)
+  doc: "Construct a partial sequence (one with missing elements) from $fullSeq by removing (i.e., replacing with NULL) each occurrence of $nullValue"
+  imp: (pyFunction "++" (pyModRaw "spark.lang.builtin" "partial"))}
+
+
+{defpredicate (Partial $fullSeq $nullValue $partialSeq)
+  doc: "Convert between full and partial sequences. Note that this is incomplete in that it only generates one solution (the smallest non-negative integer) for $nullValue in cases where multiple solutions are possible."
+  imp: (pyPredicate "---" (pyModRaw "spark.lang.builtin" "partialPredicate"))}
+
+################################################################
+# Conditional statements
+
+{declare |ifdef:| keys: [] modes: ["1=q1"]
+  imp: "spark.lang.builtin.Ifdef"}
+
+{declare |ifndef:| keys: [] modes: ["1=q1"]
+  imp: "spark.lang.builtin.Ifndef"}
+
+################################################################
+# Ability to associate properties with a term
+
+{declare properties modes: ["s=s*+"]
+	 properties: [(static)]
+	 doc: "Provides the ability to associate properties with a logical expression e.g., (properties  (Foo $x) `(prob 0.7))"
+	 imp: "spark.lang.builtin.HashProperties"
+	 combiner: "spark.internal.parse.combiner.SERIAL" # Not quite correct
+	 }

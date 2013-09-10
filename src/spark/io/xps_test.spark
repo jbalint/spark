@@ -1,0 +1,28 @@
+importfrom: spark.io.xps XPS requestXPS
+importfrom: spark.io.common ProvideService startServer stopServer
+
+main: doit
+
+{defaction (doit +$args)}
+{defprocedure _doit
+  cue: [do: (doit +$args)]
+  body: [seq:
+	  [do: (startServer XPS [])]
+	  [set: $ignore (pyEval "M.com__sri__ai__spark__executor.XPSSolver.setNonsparkSolver(M.com__sri__ai__spark__executor.XPSSolver.getSparkSolver()) or 0")]
+	  [do: (requestXPS "print" ["(%s %s)" [1 1]] $errnum $result)]
+	  [do: (print "$errnum=%r, $result=%r" [$errnum $result])]
+	  [do: (requestXPS "add" [1 2] $errnum1 $result1)]
+	  [do: (print "$errnum1=%r, $result1=%r" [$errnum1 $result1])]
+	  [do: (stopServer XPS)]]}
+
+
+
+(ProvideService "print" print "d0" [])
+(ProvideService "add" add "d1" [])
+
+{defaction (add +$x +$y $z)
+  imp: {task [+$x +$y -$z] [set: $z (+ $x $y)]}}
+
+
+	 
+	 

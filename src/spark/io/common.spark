@@ -1,0 +1,118 @@
+module: spark.io.common
+
+importfrom: spark.util.partial doActionSpec TestPredicateSpec
+importfrom: spark.lang.types string list
+importfrom: spark.lang.list last
+
+exportall:
+
+################################################################
+# Generic request support 
+
+{defpredicate (Request $type $id $partial $callback)
+  doc: "An ephemeral predicate posted when there is a request to evaluate, test, or do something. $id is a (not necessarily unique) identifier for the request. $type = \"+\" for evaluate a function call, \"s\" to find solutions for a predicate, \"d\" to do an action. $partial is a partial structure (one with missing elements) whose functor is the fully qualified symbol name of the function/predicate/action and whose given elements are the input arguments. On completion of the request, the $callback action is performed passing in the $type, $id, and either 0 and a value representing the successful result or an error number  and a string describing the failure."}
+
+{defprocedure _RequestDo
+  cue: [newfact: (Request +$type +$id +$partial +$callback)]
+  precondition: (= $type "d")
+  doc: "Call an action specified by a structure whose functor is the fully-qualified symbol that names an action, and whose non-empty fields are the input parameters of that action. Once it completes, call the callback with a List where the empty fields are replaced by output values."
+  body:
+  [tryexcept:
+    [do: (doActionSpec $partial $result)]
+    [do: (applyact $callback $type $id 0 (list $result))]
+    $failure
+    [do: (applyact $callback $type $id 1 (string $failure))]]}
+
+{defprocedure _RequestDo1
+  cue: [newfact: (Request +$type +$id +$nonpartial +$callback)]
+  precondition: (= $type "d1")
+  doc: "Call an action specified by a structure whose functor is the fully-qualified symbol that names an action whose single output parameter is the last parameter. Values for the input parameters of the action are the fields of the structure. Once the action completes, call the callback with the value of the output parameter."
+  body:
+  [tryexcept:
+    [do: (doActionSpec (+ $nonpartial (partial [0] 0)) $result)]
+    [do: (applyact $callback $type $id 0 (last $result))]
+    $failure
+    [do: (applyact $callback $type $id 1 (string $failure))]]}
+
+{defprocedure _RequestDoB
+  cue: [newfact: (Request +$type +$id +$nonpartial +$callback)]
+  precondition: (= $type "db")
+  doc: "Call an action specified by a structure whose functor is the fully-qualified symbol that names an action without any output parameters. Values for the input parameters of the action are the fields of the structure. Once the action completes, call the callback with value True or False depending upon success or failure."
+  body:
+  [tryexcept:
+    [do: (doActionSpec $nonpartial $result)]
+    [do: (applyact $callback $type $id 0 (_bool 1))]
+    $failure
+    [seq:
+      [do: (print "Failure of a db request, return False, error is:\n%s" [$failure])]
+      [do: (applyact $callback $type $id 0 (_bool 0))]]]}
+
+{deffunction (_bool $b)
+  doc: "Convert $b to a Python boolean"
+  imp: (pyFunction "+" (pyModRaw "__builtin__" "bool"))}
+
+
+{defprocedure _RequestDo0
+  cue: [newfact: (Request +$type +$id +$nonpartial +$callback)]
+  precondition: (= $type "d0")
+  doc: "Call an action specified by a structure whose functor is the fully-qualified symbol that names an action without any output parameters. Values for the input parameters of the action are the fields of the structure. Once the action completes, call the callback with an arbitrary value, 0."
+  body:
+  [tryexcept:
+    [do: (doActionSpec $nonpartial $result)]
+    [do: (applyact $callback $type $id 0 0)]
+    $failure
+    [do: (applyact $callback $type $id 1 (string $failure))]]}
+
+{defprocedure _RequestSolve
+  cue: [newfact: (Request +$type +$id +$partial +$callback)]
+  precondition: (= $type "s")
+  body:
+  [tryexcept:
+    [set: $result (solutionspat $r (TestPredicateSpec $partial $r) (list $r))]
+    [do: (applyact $callback $type $id 0 $result)]
+    $failure
+    [do: (applyact $callback $type $id 1 (string $failure))]]}
+
+################################################################
+# Generic capability to provide external access to actions,
+# predicates, etc., via different mechanisms
+
+{defpredicate (ProvideService $name $symbol $type $mechanism)
+    doc: "The action, predicate, or function $symbol is to be made available as an externally accessible XMLRPC service named $string. $type is \"s\" (solve) for a predicate and \"d\" (do) for an action. $mechanism is either (1) a symbol designating the sevrer mechanism (whether for OAA, XML-RPC, XML-JSON, etc., or (2) a non-empty list of such symbols, or (3) an empty list designating any available mechanism."}
+
+{defaction (startServer $mechanism $parameters)
+  doc: "A generic action for starting a server with the given parameters"}
+{defaction (stopServer $mechanism)
+  doc: "A generic action for stopping a server"}
+{defpredicate (AvailableServer $mechanism $startServerAction $stopServerAction)
+  doc: "A predicate indicating which server mechanisms have been loaded into SPARK"}
+{defpredicate (ServerRunning $mechanism $parameters)
+  doc: "A predicate indicating which server mechanisms are running and what parameters were used to start the server"}
+
+{defprocedure _startServer
+  cue: [do: (startServer +$mechanism +$parameters)]
+  precondition: (AvailableServer $mechanism $startServerAction $_stopServerAction)
+  body:
+  [seq:
+    [context: (not (ServerRunning $mechanism $_parameters))
+	      "Server for %s is already running" $mechanism]
+    [do: (applyact $startServerAction $parameters)]
+    [conclude: (ServerRunning $mechanism $parameters)]]}
+
+{defprocedure _stopServer
+  cue: [do: (stopServer +$mechanism)]
+  precondition: (AvailableServer $mechanism $_startServerAction $stopServerAction)
+  body:
+  [seq:
+    [context: (ServerRunning $mechanism $_parameters)
+	      "No server for %s is known to be running" $mechanism]
+    [do: (applyact $stopServerAction)]
+    [retractall: [$p] (ServerRunning $mechanism $p)]]}
+
+
+################################################################
+
+{defaction (standardCallback +$type +$requestId +$errnum +$result)
+  imp: (pyAction "A++++" (pyModRaw "spark.io.common" "standardCallback"))}
+
+

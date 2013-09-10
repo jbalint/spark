@@ -1,0 +1,53 @@
+#!/usr/bin/env spark
+#*****************************************************************************#
+#* Copyright (C) 2004 SRI International.  All rights reserved.               *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions        *#
+#* are met:                                                                  *#
+#* 1. Redistributions of source code must retain the above copyright         *#
+#*    notice, this list of conditions and the following disclaimer.          *#
+#* 2. Redistributions in binary form must reproduce the above copyright      *#
+#*    notice, this list of conditions and the following disclaimer in the    *#
+#*    documentation and/or other materials provided with the distribution.   *#
+#* 3. The name of the author may not be used to endorse or promote products  *#
+#*    derived from this software without specific prior written permission.  *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR        *#
+#* IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED            *#
+#* WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE    *#
+#* DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,        *#
+#* INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES        *#
+#* (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR        *#
+#* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)        *#
+#* HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,       *#
+#* STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING     *#
+#* IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE        *#
+#* POSSIBILITY OF SUCH DAMAGE.                                               *#
+#*****************************************************************************#
+
+main: mymain
+importall: spark.lang.common spark.lang.list
+
+{deffunction (mylen $list) 
+  imp: (python_function (py_mod "__builtin__" "len"))}
+{deffunction (methlen $list) 
+  imp: (python_function (py_meth "__len__"))}
+{defpredicate (mycontains $list $element)
+  imp: (python_predicate (py_mod "operator" "contains"))}
+
+{defprocedure "mymain"
+  cue: [do: (mymain $args)]
+  precondition: (ground $args)
+  body: [seq:
+	  [do: (print "(map {fun [$x] (+ $x 1)} [1 2 3])->%s" [(map {fun [$x] (+ $x 1)} [1 2 3])])]
+	  [set: $x [[[a 2][b 3][c 4]] [[a 4][b 3][c 2]]]]
+	  [do: (print "(map {fun [$ans] (map {fun [$pair] (list_index $pair 1)} $ans)} $x)->%s" [(map {fun [$ans] (map {fun [$pair] (list_index $pair 1)} $ans)} $x)])]
+	  [do: (print "(mylen []) -> %s" [(mylen [])])]
+	  [do: (print "(mylen [1 2 3]) -> %s" [(mylen [1 2 3])])]
+	  [do: (print "(methlen [1 2 3]) -> %s" [(methlen [1 2 3])])]
+	  [select: (mycontains [1 2 3] 1) [do: (print "(mycontains [1 2 3] 1)" [])]
+	  	   (true) [do: (print "(not (mycontains [1 2 3] 1))" [])]]
+	  ]}
+
+

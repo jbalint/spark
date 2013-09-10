@@ -1,0 +1,42 @@
+main: forin_unit_tests
+importall: spark.tests.unit
+export: forin_unit_tests
+{defaction (forin_unit_tests +$args)}
+
+{defprocedure _forin_unit_tests
+  cue: [do: (forin_unit_tests +$_args)]
+  body:
+  [seq:
+    [set: $ftask {task []
+		   [seq:
+		     [forin: $x [1 2 3] 
+			     [seq: 
+			       [context: (and (= $y $x) (= $z $x))]]
+			     $y $ylist $z $zlist]
+		     [context: (= $ylist [1 2 3]) "$ylist has the wrong value"]
+		     [context: (= $zlist [1 2 3]) "$zlist has the wrong value"]]}]
+    [do: (AssertSucceed $ftask)]
+    [do: (print "Forin Tests Complete, ALL TESTS SUCCEEDED" [])]]}
+
+  
+{defaction (unit_forin_test +$args)}
+{defprocedure Unit_Forin_Test
+  cue: [do: (unit_forin_test +$_args)]
+  body:
+  [seq:
+    [set: $ftask {task []
+       [seq:
+         [forin: $x [1 2 3] 
+           [seq: 
+             [context: (and (= $y $x) (= $z $x))]]
+           $y $ylist $z $zlist]
+         [context: (= $ylist [1 2 3]) "$ylist has the wrong value"]
+         [context: (= $zlist [1 2 3]) "$zlist has the wrong value"]]}]
+  [try:
+    [do: (AssertSucceed $ftask)]
+    [do: (actTestSucceed "unit_forin_test")]
+    [fail: (funcTestFailed "unit_forin_test" "forin failed")]
+    []
+  ]
+  [do: (print "Forin Tests Complete, ALL TESTS SUCCEEDED" [])]
+]}

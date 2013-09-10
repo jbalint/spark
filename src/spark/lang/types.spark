@@ -1,0 +1,32 @@
+package: spark.lang.types
+
+################################################################
+# Functions to construct (or coerce to) the basic types
+# Note that the fully qualified symbol names  of these functions are
+# the type names returned by sparkTypeOf
+{deffunction (boolean $x)
+  imp: (pyFunction "+" (pyModRaw "spark.lang.spark_types" "Boolean"))}
+{deffunction (integer $x)
+  imp: (pyFunction "+" (pyModRaw "spark.lang.spark_types" "Integer"))}
+{deffunction (string $x)
+  imp: (pyFunction "+" (pyModRaw "spark.lang.spark_types" "String"))}
+{deffunction (list $x)
+  imp: (pyFunction "+" (pyModRaw "spark.lang.spark_types" "List"))}
+{deffunction (float $x)
+  imp: (pyFunction "+" (pyModRaw "spark.lang.spark_types" "Float"))}
+{deffunction (variable $name)
+  imp: (pyFunction "+" (pyModRaw "spark.lang.spark_types" "Variable"))}
+{deffunction (symbol $name)
+  imp: (pyFunction "+" (pyModRaw "spark.lang.spark_types" "Symbol"))}
+{deffunction (structure $functor $argslist)
+  imp: (pyReversible "++" 
+		     (pyModRaw "spark.lang.spark_types" "Structure")
+		     (pyModRaw "spark.lang.spark_types" "structureInverse"))}
+{deffunction (sparkTypeOf $x)
+  imp: (pyFunction "+" (pyModRaw "spark.lang.spark_types" "sparkTypeOf"))}
+
+{defconstant unknownType}
+
+exportall:
+
+################################################################

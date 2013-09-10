@@ -1,0 +1,134 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 24 $" *#
+#* $Source: /homedir/cvs/cvsroot/spark/src/spark/tests/persist_test.spark,v $ *#
+#*****************************************************************************#
+importall: spark.util.persistence
+
+main: test_persist
+
+{defpredicate (pred0)}
+{defpredicate (pred1 $arg)}
+#predicate with no facts
+{defpredicate (pred1zerofacts $arg)}
+{defpredicate (pred2 $arg $arg2)}
+
+#use to track newfact even on TestPersistPred
+{defpredicate (EventGenerated $arg)}
+
+#custom predicate implementation that reconcludes itself
+#to "Test-Succeeded" after it resumes state
+{defpredicate (TestPersistPred $arg)
+ imp: (pyModRaw "spark.tests.persist_test" "TestPersistImp")}
+
+#if this fact remains in the KB after a resume op, then the test has failed
+(TestPersistPred "Test-Failed")
+
+{defaction (test_resume)}
+{defaction (test_resume_sub)}
+{defprocedure |Test Resume|
+ precondition: (True)
+ cue: [do: (test_resume)]
+ body: [seq:
+  [do: (print "Starting test resume. If test succeeds, you should see a success message below" [])]
+  [try: [do: (test_resume_sub)] [do: (print "Test resume SUCCEEDED" [])]
+        [] [do: (print "Test resume FAILED" [])] ] ]
+}
+{defprocedure |Test Resume Sub|
+ precondition: (True)
+ cue: [do: (test_resume_sub)]
+ body: [seq:
+  [context: (TestPersistPred "Test-Succeeded")]
+  [do: (print "Knowledge base has proper, resumed state" [])]
+  [context: (EventGenerated 1)]
+  [do: (print "New fact event was properly generated after resume" [])]
+  [retract: (EventGenerated 1)]
+ ]
+}
+
+{defaction (test_resume_event_listener $arg)}
+{defprocedure |Test resume event listener|
+ precondition: (Ground $x)
+ cue: [newfact: (TestPersistPred $x)]
+ body: [seq:
+   [do: (print "test_resume_event_listener invoked with value, %s" [$x])]
+   [context: (= $x "Test-Succeeded")]
+   [conclude: (EventGenerated 1)]
+ ]
+}
+
+(pred0)
+(pred1 "foo")
+(pred1 "a")
+(pred1 [])
+(pred1 [1 2 3])
+(pred1 ["one's" "2" 3.0])
+(pred1 1)
+(pred2 "foo\nbreak" "bar")
+(pred2 "one" "two")
+(pred2 ["one" "two" ["2.a" "2b" 2.3]] ["three" 4.0 "five\\'s"])
+(pred2 1 2)
+
+{defaction (goalThatWaits)}
+{defprocedure goalThatWaitsProcedure
+  cue: [do: (goalThatWaits)]
+  precondition: (True)
+  body: [seq:
+	  [parallel:
+	    [do: (subgoal 1)]		# should not wait
+	    [do: (subgoal 2)]		# should wait
+	    [do: (subgoal 3)]		# should wait
+	  ]
+	  [do: (print "goalThatWaits completed" [])]]}
+
+{defaction (subgoal $n)}
+{defprocedure subgoalProcedure
+  cue: [do: (subgoal $n)]
+  precondition: (True)
+  body: [wait: (pred1 $n) []]}
+
+
+{defaction (test_persist $args)}
+
+{defprocedure _TestPersist
+  cue: [do: (test_persist $args)]
+  precondition: (Ground $args)
+  body:
+    [seq:
+      [set: $pred1 (qent pred1)]
+      [set: $pred1zf (qent pred1zerofacts)]      
+      [set: $pred2 (qent pred2)]
+      [set: $pred0 (qent pred0)]      
+      [set: $list [$pred0 $pred1 $pred1zf $pred2]]
+      #[do: (savePredicates "spark.tests.persist_data" $list)] #not defined! DNM
+      [do: (print "Test Persist Done" [])]
+    ]
+}
+
+exportall:

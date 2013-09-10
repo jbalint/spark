@@ -1,0 +1,152 @@
+#!/usr/bin/env spark
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 24 $" *#
+#* $Source: $ *#
+#*****************************************************************************#
+
+importall: spark.lang.list
+export: p q r f g 
+
+{defpredicate (source1q $fact)}
+{deffunction (f $fact)}
+{deffunction (g $fact)}
+{defpredicate (p $fact $fact2)}
+{defpredicate (q $fact $fact2)}
+{defpredicate (r $fact)}
+{defpredicate (User $fact)}
+
+{defaction (test_predexpr)}
+{defaction (thread_test $args)}
+{defaction (list_test $args)}
+{defaction (test_query)}
+{defaction (source1_task1 $x $y)}
+
+(User (@ "*Bob"))
+
+#from list_spark_test
+{deffunction (mylen $list) 
+  imp: (pyFunction "+" (pyModRaw "__builtin__" "len"))}
+{deffunction (methlen $list) 
+  imp: (pyFunction "+" (pyMeth "__len__"))}
+{defpredicate (mycontains $list $element)
+  imp: (pyPredicate "++" (pyModRaw "operator" "contains"))}
+
+#from test_thread
+
+{defprocedure thing
+  cue: [do: (thread_test $args)]
+  precondition: (Ground $args)
+  body: [seq:
+	  [do: (print "test_thread: sleeping" [])]
+	  [do: (sleep 50)] #sleep long enough for us to get intentions
+	  [do: (print "test_thread: waking" [])]]}
+
+#from test_predexprs
+(p 1 2)
+(p 2 3)
+(p 3 4)
+
+(q 1 2)
+(q 2 3)
+(q 3 4)
+
+(r (f 1))
+(r (g 2))
+
+{defprocedure FooBar
+ cue: [do: (test_predexpr)]
+ precondition: (and (p $y1 $_x1)
+                    (p $y2 $_x2)
+		    (!= $y1 $y2))
+ body:
+   [do: (print "$y1=%s $y2=%s" [$y1 $y2])]
+ doc: "A simple example"
+}
+
+#from example
+
+{defpredicate (examplep $number)
+  imp: (determined "-")}
+
+{defprocedure P_asserted
+ cue: [newfact: (examplep +$x)]
+ precondition: (> $x 0)
+ body: [do: (print "(p %s) was true, now we conclude (examplep %s)" [$x (- $x 1)])
+        conclude: (examplep (- $x 1))]
+}
+
+# from source1.spark
+
+(p 1 2)
+(p 2 3)
+(p 3 4)
+
+{defprocedure |Proc 1|
+  cue: [do: (source1_task1 $x $y)]
+  precondition: (and (= $x 1) (= $y 1))
+  body: [do: (print "1" [])
+         conclude:  (source1q $x)]
+}
+
+{defprocedure |Proc 2|
+  cue: [do: (source1_task1 $x $y)]
+  precondition: (and (= $x 2) (= $y 2))
+  body: [do: (print "2" [])
+         conclude: (source1q $x)]
+}
+
+{defprocedure |Proc 3|
+  cue: [do: (source1_task1 $x $y)]
+  precondition: (and (= $x 3) (= $y 3))
+  body: [seq: [do: (source1_task1 1 $_y1)]
+              [do: (source1_task1 2 $_y2)]
+         retractall: [$x2] (source1q $x2)]
+}
+
+{defprocedure |Proc 4|
+  cue: [do: (source1_task1 $x $y)]
+  precondition: (= $x 5)
+  body: [seq: [do: (source1_task1 1 $_y1)]
+              [wait: (source1q 7) [do: (source1_task1 2 $y)]]
+         retractall: [$x2] (source1q $x2)]
+}
+{defprocedure |Proc 5|
+  cue: [do: (source1_task1 $x $y)]
+  precondition: (= $x 4)
+  body: [seq: [do: (source1_task1 1 $y)]
+              [wait: (source1q 7) [do: (print "ho" [])]]
+         retractall: [$x2] (source1q $x2)]
+}
+     
+{defprocedure |Proc 6|
+  precondition: (True)
+  cue: [newfact: (source1q +$x)]
+  body: [do: (print "(source1q %s) is now true" [$x])]
+}

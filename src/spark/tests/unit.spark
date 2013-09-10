@@ -1,0 +1,505 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 367 $" *#
+#* $Source: /homedir/cvs/cvsroot/spark/src/spark/tests/unit.spark,v $ *#
+#*****************************************************************************#
+importall: spark.tests.settings
+
+main: test_unit_tests
+
+#function to pass into intentional fail:s
+{deffunction (test_fail)}
+
+#open predicate used for unit testing
+{defpredicate (FooPred $arg)}
+
+##############
+#Success/Failure functions and actions
+#(are both types really needed?)
+##############
+{deffunction (funcTestFailed $name $reason)
+  imp: (pyFunction "++" (pyModRaw "spark.tests.unit" "setFail" ))}
+{deffunction (funcTestSucceed $name)
+  imp: (pyFunction "+" (pyModRaw "spark.tests.unit" "setSuccess" ))}
+{defaction (actTestFailed $name $reason)
+  imp: (pyAction "++" (pyModRaw "spark.tests.unit" "setFail" ))}
+{defaction (actTestSucceed $name)
+  imp: (pyAction "+" (pyModRaw "spark.tests.unit" "setSuccess" ))}
+##############
+#Modified unit tests
+##############
+{defaction (unit_assert_succeed $args)}
+{defprocedure Unit_Assert_Succeed
+  doc: "Testing AssertSucceed"
+  cue: [do: (unit_assert_succeed $args)]
+  precondition: (Ground $args)
+  body: 
+    [seq:
+      [set: $task1 {task [] [do: (test_assert_succeed)] }]
+      [try: [do: (AssertSucceed $task1)] [do: (actTestSucceed "unit_assert_succeed")]
+         [fail: (funcTestFailed "unit_assert_succeed" "AssertSucceed failed")] []
+      ]
+    ]
+}
+{defaction (unit_assert_succeed1 $args)}
+{defprocedure Unit_Assert_Succeed1
+  doc: "Testing AssertSucceed (2)"
+  cue: [do: (unit_assert_succeed1 $args)]
+  precondition: (Ground $args)
+  body: 
+    [seq:
+      [set: $task1b {task [] [do: (test_assert_succeed1)] }]
+      [try: [do: (AssertSucceed $task1b)] [do: (actTestSucceed "unit_assert_succeed1")]
+         [fail: (funcTestFailed "unit_assert_succeed1" "AssertSucceed failed")] []
+      ]
+    ]
+}
+{defaction (unit_assert_fail $args)}
+{defprocedure Unit_Assert_Fail
+  doc: "Testing AssertFail"
+  cue: [do: (unit_assert_fail $args)]
+  precondition: (Ground $args)
+  body: 
+    [seq:
+      [set: $task2 {task [] [do: (test_assert_fail)] }]
+      [try: [do: (AssertSucceed $task2)] [do: (actTestSucceed "unit_assert_fail")]
+         [fail: (funcTestFailed "unit_assert_fail" "AssertFail failed")] []
+      ]
+    ]
+}
+{defaction (unit_assert_bound $args)}
+{defprocedure Unit_Assert_Bound
+  doc: "Testing AssertBound"
+  cue: [do: (unit_assert_bound $args)]
+  precondition: (Ground $args)
+  body: 
+    [seq:
+      [set: $task3 {task [] [do: (test_assert_bound)] }]
+      [try: [do: (AssertSucceed $task3)] [do: (actTestSucceed "unit_assert_bound")]
+         [fail: (funcTestFailed "unit_assert_bound" "AssertBound failed")] []
+      ]
+    ]
+}
+{defaction (unit_assert_pred $args)}
+{defprocedure Unit_Assert_Pred
+  doc: "Testing AssertPred"
+  cue: [do: (unit_assert_pred $args)]
+  precondition: (Ground $args)
+  body: 
+    [seq:
+      [set: $task4 {task [] [do: (test_assert_pred)] }]
+      [try: [do: (AssertSucceed $task4)] [do: (actTestSucceed "unit_assert_pred")]
+         [fail: (funcTestFailed "unit_assert_pred" "AssertPred failed")] []
+      ]
+    ]
+}
+##############
+#LOGGING
+##############
+
+#TODO: create unit_aux that can keep track of failures/success
+{deffunction (assert_failed $fail_reason)}
+{deffunction (test_succeeded $message_reason)}
+
+{defaction (TestSucceeded $message)}
+{defprocedure Test_Succeeded 
+ cue: [do: (TestSucceeded +$message)]
+ precondition: (True)
+ body:
+   [context: (= $_foo (test_succeeded $message))] #to 'bind' variable
+}
+
+
+##############
+# ASSERT BOUND
+##############
+{defaction (AssertBound $ab_arg)}
+{defprocedure Assert_Bound
+  doc: "Assert Bound"
+  cue: [do: (AssertBound $ab_arg)]
+  precondition: (True) 
+  body: 
+  [try: [context: (Ground $ab_arg)] [succeed: ]
+        [] [seq:
+             #pretend to bind here so SPARK does not complain
+             [set: $ab_arg "foo"]
+             [do: (print "ERROR: Argument not bound" []) ]
+             [fail: (assert_failed "assert bound")]] ]
+}
+###############
+# ASSERT EQUALS
+###############
+#TODO: test
+{defaction (AssertEquals $arg1 $arg2)}
+{defprocedure Assert_Equals
+  doc: "Assert Equals"
+  cue: [do: (AssertEquals $arg1 $arg2)]
+  precondition: (True) 
+  body:
+  [seq:
+    [do: (AssertBound $arg1)]
+    [do: (AssertBound $arg2)]
+    #perform the context to keep spark happy about binding
+    [context: (and (Ground $arg1) (Ground $arg2))]
+    [try: [context: (= $arg1 $arg2)] [succeed: ]
+          [] [seq:
+               #pretend to bind here so SPARK does not complain
+               [do: (print "ERROR: Arguments not equal: %s %s" [$arg1 $arg2]) ]
+               [fail: (assert_failed "assert equals")]] ]
+  ]
+}
+
+##############
+# ASSERT EMPTY
+##############
+{defaction (AssertEmpty $list)}
+{defprocedure Assert_Empty1
+  doc: "Assert Empty"
+  cue: [do: (AssertEmpty $list)]
+  precondition: (= $list []) 
+  body: 
+  [context: (= $list $list)]
+}
+{defprocedure Assert_Empty2
+  doc: "Assert Empty"
+  cue: [do: (AssertEmpty $list)]
+  precondition: (and (Ground $list)(not (= $list [])))
+  body: 
+   [#context: (Ground $value)
+    seq:
+     [do: (print "AssertEmpty FAILED" [])]
+     [fail: (assert_failed "assert empty")]
+   ]}
+
+##################
+# ASSERT NOT EMPTY
+##################
+{defaction (AssertNotEmpty $list)}
+{defprocedure Assert_Not_Empty
+  doc: "Assert Not Empty"
+  cue: [do: (AssertNotEmpty $list)]
+  precondition: (True)
+  body: 
+    [context: (Ground $list)
+     do: (print "Not Implemented" [])]
+}
+##################
+# ASSERT FAIL
+##################
+{defaction (AssertFail $task_closure)}
+{defprocedure Assert_Fail
+  cue: [do: (AssertFail $task_closure)]
+  precondition: (True)
+  body: 
+   [seq:
+     [context: (Ground $task_closure)]
+     [try: [do: (applyact $task_closure)]
+           [seq: 
+             [do: (print "AssertFail FAILED" [])]
+             [fail: (assert_failed "assert fail")] ]
+           [] [succeed: ] ]
+    ]
+}
+{defaction (AssertFail2 $task_closure $arg1 $arg2)}
+{defprocedure Assert_Fail2
+  cue: [do: (AssertFail2 $task_closure $arg1 $arg2)]
+  precondition: (True)
+  body: 
+   [seq:
+     [context: (Ground $task_closure)]
+     [try: [do: (applyact $task_closure $arg1 $arg2)]
+           [seq: 
+             [do: (print "AssertFail FAILED" [])]
+             [fail: (assert_failed "assert fail")] ]
+          [context: (and (Ground $arg1) (Ground $arg2))]
+          [succeed: ]
+          #bind the args so spark doesn't complain
+          [seq: [context: (Ground $arg1)] [set: $arg2 "unbound"]]
+          [succeed: ] 
+          #bind the args so spark doesn't complain
+          [seq: [context: (Ground $arg2)] [set: $arg1 "unbound"]]
+          [succeed: ] 
+          [seq: [set: $arg1 "unbound arg"] [set: $arg2 "unbound arg"]]
+          [succeed: ] ]
+    ]
+}
+##################
+# ASSERT SUCCEED
+##################
+{defaction (AssertSucceed $task_closure)}
+{defprocedure Assert_Succeed
+  doc: "Assert Succeed"
+  cue: [do: (AssertSucceed $task_closure)]
+  precondition: (True)
+  body:
+  [seq:
+    #setup checks so we can give user warning about bugs in their unit tests
+    [do: (AssertBound $task_closure)]
+
+    [context: (Ground $task_closure)]
+    [try: [do: (applyact $task_closure)]
+          [succeed: ]
+          []
+          [seq: 
+            [do: (print "AssertSucceed FAILED" [])]
+            [fail: (assert_failed "assert succeed")] ]
+    ]
+  ]
+}
+{defaction (AssertSucceed1 $task_closure $arg1)}
+{defprocedure Assert_Succeed1
+  doc: "Assert Succeed (1)"
+  cue: [do: (AssertSucceed1 $task_closure $arg1)]
+  precondition: (True)
+  body:
+  [seq:
+    #setup checks so we can give user warning about bugs in their unit tests
+    [do: (AssertBound $task_closure)]
+
+    [context: (Ground $task_closure)]
+    [try: [do: (applyact $task_closure $arg1)]
+          [succeed: ]
+
+          #keep SPARK happy about binding, as arg1 may or may not
+          #be bound
+          [context: (Ground $arg1)]
+          [seq: 
+            [do: (print "AssertSucceed FAILED" [])]
+            [fail: (assert_failed "assert succeed")] ]
+          [set: $arg1 "unbound arg"]
+          [seq: 
+            [do: (print "AssertSucceed FAILED" [])]
+            [fail: (assert_failed "assert succeed")] ]
+    ]
+  ]
+}
+{defaction (AssertSucceed2 $task_closure $arg1 $arg2)}
+{defprocedure Assert_Succeed2
+  doc: "Assert Succeed (2)"
+  cue: [do: (AssertSucceed2 $task_closure $arg1 $arg2)]
+  precondition: (True)
+  body:
+  [seq:
+    #setup checks so we can give user warning about bugs in their unit tests
+    [do: (AssertBound $task_closure)]
+
+    [context: (Ground $task_closure)]
+    [try: [do: (applyact $task_closure $arg1 $arg2)]
+          [succeed: ]
+
+          #keep SPARK happy about binding, as arg1 may or may not
+          #be bound
+          [context: (and (Ground $arg1) (Ground $arg2))]
+          [seq: 
+            [do: (print "AssertSucceed FAILED" [])]
+            [fail: (assert_failed "assert succeed")] ]
+          #bind the args so spark doesn't complain
+          [seq: [context: (Ground $arg1)] [set: $arg2 "unbound arg"]]
+          [seq: 
+            [do: (print "AssertSucceed FAILED" [])]
+            [fail: (assert_failed "assert succeed")] ]
+          [seq: [context: (Ground $arg2)] [set: $arg1 "unbound arg"]]
+          [seq: 
+            [do: (print "AssertSucceed FAILED" [])]
+            [fail: (assert_failed "assert succeed")] ]
+          [seq: [set: $arg1 "unbound arg"] [set: $arg2 "unbound arg"]]
+          [seq: 
+            [do: (print "AssertSucceed FAILED" [])]
+            [fail: (assert_failed "assert succeed")] ]
+    ]
+  ]
+}
+
+###########################
+# ASSERT PRED
+###########################
+
+{defaction (AssertPred $predclos $predarg)}
+{defprocedure Assert_Pred1
+  #doc: "Assert Pred (1)"
+  doc: "Assert that the predicate test succeeds with the specified value (success condition)"
+  cue: [do: (AssertPred $predclos $predarg)]
+  precondition: (and (Ground $predclos) (applypred $predclos $predarg))
+  body: 
+  [seq:
+    [do: (AssertBound $predclos)]
+    [do: (AssertBound $predarg)]
+  ]
+}
+{defprocedure Assert_Pred2
+  cue: [do: (AssertPred $predclos $predarg)]
+  precondition: (and (Ground $predclos) (Ground $predarg) (not (applypred $predclos $predarg)))
+  body: 
+  [seq:
+    [do: (AssertBound $predclos)]
+    [do: (AssertBound $predarg)]
+    [do: (print "Assert Pred FAILED [%s:%s]" [$predclos $predarg])]  
+    [fail: "Assert Pred condition failed"]
+  ]
+  doc: "Assert that the predicate test succeeds with the specified value (failure condition)"
+}
+
+###########################
+# UNIT TEST THE UNIT TESTS
+# SNAKE SWALLOWING THE TAIL
+###########################
+{defaction (test_assert_succeed)}
+{defprocedure Test_Assert_Succeed
+  doc: "Testing Assert Succeed"
+  cue: [do: (test_assert_succeed)]
+  precondition: (True)
+  body: 
+  [seq:
+   [do: (print "Starting Test Assert Succeed (0 args)" [])]
+   [set: $task {task [] [succeed: ]}]
+   [do: (AssertSucceed $task)]
+   #make sure assert succeed properly fails
+   [set: $task2 {task [] [fail: (test_fail)]}]
+   [try: [do: (AssertSucceed $task2)] [fail: (assert_failed "AssertSucceed should not have succeeded")] 
+         [] [succeed: ] ]
+   [do: (print "Test Assert Succeed COMPLETED" [])]
+  ]
+}
+
+{defaction (test_assert_succeed1)}
+{defprocedure Test_Assert_Succeed1
+  cue: [do: (test_assert_succeed1)]
+  precondition: (True)
+  body: 
+  [seq:
+   [do: (print "Starting Test Assert Succeed (1 arg)" [])]
+   [set: $task {task [$x] [context: (= $x "foo")]}]
+   [set: $foo "foo"]
+   [do: (AssertSucceed1 $task $foo)]
+
+   #make sure assert succeed properly fails
+   [set: $bar "bar"]
+   [try: [do: (AssertSucceed1 $task $bar)] [fail: (assert_failed "AssertSucceed should not have succeeded")] 
+         [] [succeed: ] ]
+   [do: (print "Test Assert Succeed (1 arg) COMPLETED" [])]
+  ]
+}
+{defaction (test_assert_fail)}
+{defprocedure Test_Assert_Fail
+  cue: [do: (test_assert_fail)]
+  precondition: (True)
+  body: 
+  [seq:
+   [do: (print "Starting Test Assert Fail (0 args)" [])]
+   [set: $task1 {task [] [fail: (test_fail)]}]
+   [do: (AssertFail $task1)]
+   #make sure assert fail properly fails
+   [set: $task2 {task [] [succeed: ]}]
+   [try: [do: (AssertFail $task2)] [fail: (assert_failed "AssertFail should not have succeeded")] 
+         [] [succeed: ] ]
+   [do: (print "Test Assert Fail COMPLETED" [])]
+  ]
+}
+
+{defaction (test_assert_bound)}
+{defprocedure Test_Assert_Bound
+  cue: [do: (test_assert_bound)]
+  precondition: (True)
+  body: 
+  [seq:
+   [do: (print "Starting Test Assert Bound" [])]
+   [set: $bound {task [] [fail: (test_fail)]}]
+   #[set: $task1 {task [] [do: (AssertBound $bound)] } ]
+   [do: (print "First Test Bound test" [])]
+   [do: (AssertBound $bound)]
+   #[do: (AssertSucceed $task1 $bound)]
+   [set: $task2 {task [] [do: (AssertBound $_notbound) ] } ]
+   [do: (print "Second Test Bound test" [])]
+   [do: (print "Bound Test Should Fail" [])]
+   [do: (AssertFail $task2)]
+   [do: (print "Test Assert Bound COMPLETED" [])]
+  ]
+}
+
+{defpredicate (test_assertpred_p1 $arg)}
+{defaction (test_assert_pred)}
+{defprocedure Test_Assert_Pred
+  cue: [do: (test_assert_pred)]
+  precondition: (True)
+  body: 
+  [seq:
+    [do: (print "Starting Test Assert Pred" [])]
+    [retractall: [$x] (test_assertpred_p1 $x)]
+    [conclude: (test_assertpred_p1 "foo")]
+    [set: $pred {pred [$x] (test_assertpred_p1 $x)}]
+    [do: (print "Assert Pred positive test" [])]
+    [do: (AssertPred $pred "foo")]
+    [do: (print "Assert Pred positive test succeeded" [])]
+    [try: [do: (AssertPred $pred "bar")] [fail: "assert pred positive test failed"]
+          [] [succeed: ]]
+    [do: (print "Assert Pred negative test succeeded" [])]
+  ]
+  doc: "Test the AssertPred task implementation"
+}
+
+###########################
+# MAIN STUFF
+###########################
+
+{defaction (test_unit_tests $args)}
+{defprocedure Test_Unit_Tests
+  doc: "Testing Unit Tests"
+  cue: [do: (test_unit_tests $args)]
+  precondition: (Ground $args)
+  body: 
+  [seq:
+    [do: (print "UNIT TEST TESTS" [])]
+    [do: (print "----------------" [])]
+    [set: $task1 {task [] [do: (test_assert_succeed)] }]
+    [do: (AssertSucceed $task1)]
+    [do: (print "-----------" [])]
+    [set: $task1b {task [] [do: (test_assert_succeed1)] }]
+    [do: (AssertSucceed $task1b)]
+    [do: (print "-----------" [])]
+    [set: $task2 {task [] [do: (test_assert_fail)] }]
+    [do: (AssertSucceed $task2)]
+    [do: (print "-----------" [])]
+    [set: $task3 {task [] [do: (test_assert_bound)] }]
+    [do: (AssertSucceed $task3)]
+    [do: (print "-----------" [])]
+    [set: $task4 {task [] [do: (test_assert_pred)] }]
+    [do: (AssertSucceed $task4)]
+    [do: (print "-----------" [])]
+    [do: (print "Test Unit Tests Completed, ALL TESTS SUCCEEDED" [])]
+  ]
+}
+
+{defaction (foo)}
+{defprocedure Foo
+  cue: [do: (foo)]
+  precondition: (True)
+  body: [do: (print "Foo" [])]
+}
+
+exportall:

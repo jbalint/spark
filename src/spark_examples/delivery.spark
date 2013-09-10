@@ -1,0 +1,294 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 448 $" *#
+#* $Source: /homedir/cvs/cvsroot/spark/src/spark_examples/delivery.spark,v $ *#
+#*****************************************************************************#
+
+#** DELIVERY Demo **
+#
+#* Overview *
+#
+#This demo creates a single Spark agent that processes
+#requests to move goods between various sites.  The initial database
+#for the agent contains information about certain known companies (such
+#as their their location) and products.
+#
+#
+#* Loading the Demo *
+#
+#To load the demo, execute the following in the command prompt
+#
+# >> spark.bat spark_examples.delivery  (in Windows)
+# >> sh ./spark spark_examples.delivery  (in Unix)
+#
+#* Running the Demo *
+#
+#To request a delivery by the system, call the delivery action. Here are two examples:
+#
+#   [do: (deliver acme_florist candy_goods)]
+#   [do: (deliver west_coast_florist seafood_goods)]
+#
+
+{defpredicate (Located $thing $location)
+  imp: (determined "+-")}
+{defpredicate (DeliverableDestination $location)}
+{defpredicate (NewCustomer $customer $location)}
+{defpredicate (Distance $c_city $g_city $distance)}
+{defpredicate (AirShipment $cargo $goods)}
+{defpredicate (LandShipment $cargo $goods)}
+{defpredicate (Goods $cargo $goods)}
+{defpredicate (CompletedInvoice $customer $goods)}
+{defpredicate (InvoiceRecorded $customer $goods)}
+{defpredicate (Delivered $goods $customer)}
+{defpredicate (Type $type $item)}
+{defpredicate (Loaded $vehicle $cargo)}
+{defpredicate (Unloaded $vehicle)}
+
+{defaction (record_invoice $customer $goods)}
+{defaction (local_delivery $customer $goods)}
+{defaction (ship_by_rail $cargo $city)}
+{defaction (ship_by_air $cargo $city)}
+{defaction (deliver $customer $goods)}
+{defaction (fly $airplane $city)}
+{defaction (move_train $train $city)}
+
+{defconstant train}
+{defconstant airplane}
+
+{defprocedure AddCustomer
+ cue: [newfact: (NewCustomer $customer $location)]
+ precondition: (and (Ground $customer) (Ground $location) (not (exists [$loc] (Located $customer $loc))))
+ body:
+ [select:
+  (DeliverableDestination $location) 
+   [do: (print "Customer %s in %s has been added" [$customer $location])
+    conclude: (Located $customer $location)]
+  (True)
+   [do: (print "Sorry, deliveries cannot be made to %s" [$location])]]
+}
+
+
+# NOTES:
+# This could also be written as (not $loc2 (Located $customer $loc2))
+
+# In this procedure, some cargo are shipped by air, some are shipped by rail.
+{defprocedure DeliveryCrossCountry
+ cue: [do: (deliver $customer $goods)]
+ precondition: (and (Located $customer $c_city)
+ 	       	    (Located $goods $g_city)
+		    (Distance $c_city $g_city $distance)
+		    (> $distance 1000))
+ 
+ body:
+ [context: (and (AirShipment $aircargo $goods)
+ 	       (LandShipment $landcargo $goods))
+  seq: [do: (record_invoice $customer $goods)]
+       [parallel: 
+         [do: (ship_by_rail $landcargo $c_city)]
+         [do: (ship_by_air $aircargo $c_city)]
+       ]
+       [do: (local_delivery $customer $goods)]
+  conclude: (CompletedInvoice $customer $goods)]
+}
+  
+# NOTES:
+# It is proposed that the first part of the precondition could be written:
+# (greater_than (Distance (Located $customer) (Located $goods)) 1000)
+
+
+{defprocedure DeliverySameCity
+ cue: [do: (deliver $customer $goods)]
+ precondition: (and (Located $customer $city)
+ 	      	   (Located $goods $city))
+ body:
+ [seq: [do: (record_invoice $customer $goods)]
+       [do: (local_delivery $customer $goods)]
+  conclude: (CompletedInvoice $customer $goods)]
+}
+
+# In this procedure, all cargo are shipped by rail.
+{defprocedure DeliveryRegional
+ cue: [do: (deliver $customer $goods)]
+ precondition: (and (Located $customer $c_city)
+ 	      	    (Located $goods $g_city)
+		    (Distance $c_city $g_city $distance)
+		    (not (> $distance 1000)))
+ body:
+ [seq: [context: (Goods $cargo $goods)]
+       [do: (record_invoice $customer $goods)]
+       [do: (ship_by_rail $cargo $c_city)] 
+       [do: (local_delivery $customer $goods)]
+  conclude: (CompletedInvoice $customer $goods)]
+}
+
+{defprocedure Fly
+ cue: [do: (fly $airplane $city)]
+ precondition: (and (Ground $airplane) (Ground $city))
+ body:
+ [do: (print "FLY %s %s" [$airplane $city])
+  conclude: (Located $airplane $city)]
+}
+
+{defprocedure Invoices
+ cue: [do: (record_invoice $customer $goods)]
+ precondition: (and (Ground $customer) (Ground $goods))
+ body:
+ [do: (print "RECORD_INVOICE %s %s" [$customer $goods])
+  conclude: (InvoiceRecorded $customer $goods)]
+}
+
+{defprocedure LocalDelivery
+ cue: [do: (local_delivery $customer $goods)]
+ precondition: (and (Ground $customer) (Ground $goods))
+ body:
+ [do: (print "LOCAL_DELIVERY %s %s" [$customer $goods])
+  conclude: (Delivered $goods $customer)]
+}
+
+{defprocedure MoveTrain
+ cue: [do: (move_train $train $city)]
+ precondition: (and (Ground $train) (Ground $city))
+ body:
+ [do: (print "MOVE_TRAIN %s %s" [$train $city])
+  conclude: (Located $train $city)]
+}
+
+# anything can be shipped by rail.
+{defprocedure ShipByRail
+ cue: [do: (ship_by_rail $cargo $city)]
+ precondition: (and (Ground $cargo) (Ground $city) (Type train $train))
+ body:
+ [seq: [achieve: (Loaded $train $cargo)]
+       [do: (move_train $train $city)]
+       [achieve: (Unloaded $train)]
+  conclude: (Located $cargo $city)]
+}
+
+{defprocedure ShipByAir
+ cue: [do: (ship_by_air $cargo $city)]
+ precondition: (and (AirShipment $cargo $_goods) (Type airplane $airplane) (Ground $city))
+ body:
+ [seq: [achieve: (Loaded $airplane $cargo)]
+       [do: (fly $airplane $city)]
+       [achieve: (Unloaded $airplane)]
+  conclude: (Located $cargo $city)]
+}
+
+{defprocedure PrimitiveActLoad
+ cue: [achieve: (Loaded $vehicle $cargo)]
+ precondition: (and (Ground $vehicle) (Ground $cargo))
+ body:
+ [do: (print "LOAD %s %s" [$vehicle $cargo])]
+}
+
+{defprocedure PrimitiveActUnload
+ cue: [achieve: (Unloaded $vehicle)]
+ precondition: (Ground $vehicle)
+ body:
+ [do: (print "UNLOAD %s" [$vehicle])]
+}
+
+# DATABASE PART
+
+{defconstant acme_florist}
+{defconstant toronto}
+{defconstant san_francisco}
+{defconstant west_coast_florist}
+{defconstant auberge_restaurant}
+{defconstant etoile_restaurant}
+{defconstant los_angeles}
+{defconstant floral_goods}
+{defconstant food_goods}
+{defconstant candy_goods}
+{defconstant seafood_goods}
+{defconstant boston}
+{defconstant train_25}
+{defconstant cessna_14}
+{defconstant chocolates}
+{defconstant bread}
+{defconstant cheese}
+{defconstant tulips}
+{defconstant roses}
+{defconstant lobster}
+{defconstant maple_syrup}
+{defconstant wine}
+{defconstant halibut}
+{defconstant christmas_trees}
+
+#Customers:
+(Located acme_florist toronto)
+(Located west_coast_florist san_francisco)
+(Located auberge_restaurant toronto)
+(Located etoile_restaurant los_angeles)
+
+#Goods:
+(Located floral_goods los_angeles)
+(Located food_goods san_francisco)
+(Located candy_goods toronto)
+(Located seafood_goods boston)
+
+(Distance boston toronto 1500)
+(Distance boston los_angeles 4000)
+(Distance boston san_francisco 4000)
+
+(Distance san_francisco boston 4000)
+(Distance san_francisco los_angeles 350)
+(Distance san_francisco toronto 3000)
+
+(Distance los_angeles boston 4000)
+(Distance los_angeles san_francisco 350)
+(Distance los_angeles toronto 3500)
+
+(Distance toronto boston 1500)
+(Distance toronto los_angeles 3500)
+(Distance toronto san_francisco  3000)
+
+(DeliverableDestination toronto)
+(DeliverableDestination los_angeles)
+(DeliverableDestination san_francisco)
+(DeliverableDestination boston)
+
+(Type train train_25)
+(Type airplane cessna_14)
+
+	
+(AirShipment [chocolates] candy_goods)
+(AirShipment [bread cheese] food_goods)
+(AirShipment [tulips roses] floral_goods)
+(AirShipment [lobster] seafood_goods)
+
+(LandShipment [maple_syrup] candy_goods)
+(LandShipment [wine] food_goods)
+(LandShipment [christmas_trees] floral_goods)
+(LandShipment [halibut] seafood_goods)
+
+(Goods [chocolates maple_syrup] candy_goods)
+(Goods [bread cheese wine] food_goods)
+(Goods [tulips roses christmas_trees] floral_goods)
+(Goods [lobster halibut] seafood_goods)

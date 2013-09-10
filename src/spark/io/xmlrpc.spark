@@ -1,0 +1,52 @@
+
+package: spark.io.xmlrpc
+
+importfrom: spark.io.common AvailableServer
+importfrom: spark.io.common ProvideService startServer stopServer
+export: XMLRPC requestXMLRPC XMLRPCServer startXMLRPCServer stopXMLRPCServer
+
+# The map utilities used to be defined here, but have moved to spark.lang.map
+# The following allows us to import and re-export them
+# This is only temporary, they should be imported from from spark.lang.map instead
+special: spark.lang.map
+importfrom: spark.lang.map mapGet MapGet mapChange mapKeys
+export: MapGet mapChange mapKeys mapGet
+
+
+################################################################
+# XML-RPC server code
+
+{defconstant XMLRPC}
+
+{defaction (startXMLRPCServer $list_args)
+  doc: "Start the XMLRPC server on $port where $list_args = [$port]"
+  imp: (pyAction "A+" (pyModRaw "spark.io.xmlrpc" "startXMLRPCServer"))}
+
+{defaction (stopXMLRPCServer)
+  imp: (pyAction "A" (pyModRaw "spark.io.xmlrpc" "stopXMLRPCServer"))}
+
+(AvailableServer XMLRPC startXMLRPCServer stopXMLRPCServer)
+
+################################################################
+# XML-RPC client code
+
+{defaction (requestXMLRPC +$uri +$name +$parameters -$failcode -$result)
+  imp: (pyActionThread "A+++--" (pyModRaw "spark.io.xmlrpc" "requestXMLRPC"))}
+
+################################################################
+# Define other XMLRPC servers:
+{defpredicate (XMLRPCServer $name $url)
+  imp:  (determined "+-")}
+
+################################################################
+# Pinging Mechanism:
+(ProvideService "xmlrpcSparkPing" xmlrpcSparkPing "d0" XMLRPC)
+{defaction (xmlrpcSparkPing)
+  imp: {task [] [do: (print "xmlrpcSparkPing was called" [])] }}
+
+################################################################
+# Simple test service
+(ProvideService "equal" = "s" XMLRPC)
+
+
+

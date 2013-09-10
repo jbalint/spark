@@ -1,0 +1,186 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 367 $" *#
+#* $Source: /homedir/cvs/cvsroot/spark/src/spark/tests/test_simpleimp.spark,v $ *#
+#*****************************************************************************#
+importall: spark.tests.unit
+main: simpleimp_unit_tests
+
+{defpredicate (OptArgEqual $x $y)
+  imp: (pyPredicate "??" (pyModRaw "spark.tests.test_simpleimp_aux" "optarg_equal"))}
+{defaction (optArgSleep $x)
+  imp: (pyAction "?" (pyModRaw "spark.tests.test_simpleimp_aux" "optarg_sleep"))}
+{deffunction (failed $x)}
+
+{defaction (simpleimp_unit_tests $arg) }
+{defprocedure _simpleimp_unit_tests
+  cue: [do: (simpleimp_unit_tests $arg)]
+  precondition: (Ground $arg)
+  body: [seq:
+          [do: (print "SIMPLEIMP UNIT TESTS" [])]
+          [do: (print "----------------" [])]
+          [set: $test
+             {task [$x $y]
+               [try: [context: (OptArgEqual $x $y)]
+                     [succeed: ]
+                     [context: (and (Ground $x) (Ground $y))]
+                     [fail: (failed "optargequals")]
+                ]
+              } ]
+          [do: (print "OptArgEqual Test (unbound x, unbound y)" [])]
+          [do: (AssertFail2 $test $_x $_y)]
+          [do: (print "OptArgEqual Test (bound x, unbound y)" [])]
+          [do: (AssertSucceed2 $test 3 $y2)]
+          [do: (AssertEquals 3 $y2)]
+          [do: (print "OptArgEqual Test (unbound x, bound y)" [])]
+          [do: (AssertSucceed2 $test $x3 30)]
+          [do: (AssertEquals 30 $x3)]
+          [do: (print "OptArgEqual Test (bound x, bound y)" [])]
+          [do: (AssertSucceed2 $test 50 50)]
+
+          [do: (print "optArgSleep Test (unbound arg)" [])]
+          [do: (optArgSleep $a)]
+          [do: (AssertEquals 1 $a)]
+          [do: (print "optArgSleep Test (bound arg)" [])]
+          [set: $b 2]
+          [do: (optArgSleep $b)]
+          [do: (AssertEquals 2 $b)]
+          [do: (print "optArgSleep Test done" [])]
+          [do: (print "SimpleImp Test Complete, ALL TESTS SUCCEEDED" [])]
+        ]
+}
+
+{defaction (unit_simpleimp_test1 $arg) }
+{defprocedure Unit_Simpleimp_Test1
+  cue: [do: (unit_simpleimp_test1 $arg)]
+  precondition: (Ground $arg)
+  body: [seq:
+    [set: $test {task [$x $y]
+      [context: (OptArgEqual $x $y)]
+    }]
+    [do: (print "OptArgEqual Test (unbound x, unbound y)" [])]
+    [try:
+      [do: (AssertFail2 $test $_x $_y)]
+      [do: (actTestSucceed "unit_simpleimp_test1")]
+      [fail: (funcTestFailed "unit_simpleimp_test1" "OptArgEqual failed")]
+      []
+    ]
+]}
+
+{defaction (unit_simpleimp_test2 $arg) }
+{defprocedure Unit_Simpleimp_Test2
+  cue: [do: (unit_simpleimp_test2 $arg)]
+  precondition: (Ground $arg)
+  body: [seq:
+    [set: $test {task [$x $y]
+      [context: (OptArgEqual $x $y)]
+    }]
+    [do: (print "OptArgEqual Test (bound x, unbound y)" [])]
+    [try:
+      [seq:
+        [do: (AssertSucceed2 $test 3 $y2)]
+        [do: (AssertEquals 3 $y2)]
+      ]
+      [do: (actTestSucceed "unit_simpleimp_test2")]
+      [fail: (funcTestFailed "unit_simpleimp_test2" "OptArgEqual failed")]
+      []
+    ]
+]}
+
+{defaction (unit_simpleimp_test3 $arg) }
+{defprocedure Unit_Simpleimp_Test3
+  cue: [do: (unit_simpleimp_test3 $arg)]
+  precondition: (Ground $arg)
+  body: [seq:
+    [set: $test {task [$x $y]
+      [context: (OptArgEqual $x $y)]
+    }]
+    [do: (print "OptArgEqual Test (unbound x, bound y)" [])]
+
+    [try:
+      [seq:
+        [do: (AssertSucceed2 $test $x3 30)]
+        [do: (AssertEquals 30 $x3)]
+      ]
+      [do: (actTestSucceed "unit_simpleimp_test3")]
+      [fail: (funcTestFailed "unit_simpleimp_test3" "OptArgEqual failed")]
+      []
+    ]
+]}
+
+{defaction (unit_simpleimp_test4 $arg) }
+{defprocedure Unit_Simpleimp_Test4
+  cue: [do: (unit_simpleimp_test4 $arg)]
+  precondition: (Ground $arg)
+  body: [seq:
+    [set: $test {task [$x $y]
+      [context: (OptArgEqual $x $y)]
+    }]
+    [do: (print "OptArgEqual Test (bound x, bound y)" [])]
+
+    [try:
+      [do: (AssertSucceed2 $test 50 50)]
+      [do: (actTestSucceed "unit_simpleimp_test4")]
+      [fail: (funcTestFailed "unit_simpleimp_test4" "OptArgEqual failed")]
+      []
+    ]
+]}
+
+{defaction (unit_simpleimp_test5 $arg) }
+{defprocedure Unit_Simpleimp_Test5
+  cue: [do: (unit_simpleimp_test5 $arg)]
+  precondition: (Ground $arg)
+  body: [seq:
+    [do: (print "optArgSleep Test (unbound arg)" [])]
+    [do: (optArgSleep $a)]
+
+    [try:
+      [do: (AssertEquals 1 $a)]
+      [do: (actTestSucceed "unit_simpleimp_test5")]
+      [fail: (funcTestFailed "unit_simpleimp_test5" "OptArgSleep failed")]
+      []
+    ]
+]}
+
+{defaction (unit_simpleimp_test6 $arg) }
+{defprocedure Unit_Simpleimp_Test6
+  cue: [do: (unit_simpleimp_test6 $arg)]
+  precondition: (Ground $arg)
+  body: [seq:
+    [set: $b 2]
+    [do: (optArgSleep $b)]
+
+    [try:
+      [do: (AssertEquals 2 $b)]
+      [do: (actTestSucceed "unit_simpleimp_test6")]
+      [fail: (funcTestFailed "unit_simpleimp_test6" "OptArgSleep failed")]
+      []
+    ]
+]}
+export: simpleimp_unit_tests

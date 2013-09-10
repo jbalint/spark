@@ -1,0 +1,154 @@
+#*****************************************************************************#
+#* Copyright (c) 2004, SRI International.                                    *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+
+#This is a simple example to show how to write Spark actions, procedures and predicates.
+#In order to load it, type "spark spark_examples.lunch" in your command prompt
+
+importfrom: spark.lang.math Between
+
+#Setting the main action to describeLunch.
+main: describeLunch
+
+#----------------------- Functions:
+{deffunction (subtract $x $y)
+  doc: "Return $x-$y."
+  imp: {fun [$x $y] (- $x $y)}}
+
+#----------------------- Predicate:
+{defpredicate (BetweenAndIncluding $low $x $high)
+  doc: "True if $x is between $low and $high or equal to one of them"
+  imp: {pred [+$low +$x +$high] 
+   (or (= $low $x) (Between $low $x $high) (= $x $high))
+}}
+
+{defpredicate (Food $name $price)}
+
+#defining a few foods:
+(Food "Steak" 20)
+(Food "Chinese Food" 10)
+(Food "Hamburger" 5)
+(Food "Cheese Sandwich" 1)
+
+#----------------------- Actions:
+{defaction (describeLunch $args)
+ doc: "Prints out information on how to run this demo. NOTE: all main actions must take in a single $args parameter."}
+
+{defaction (getLunch $money $remaining_money)
+  doc: "This is a spark action, with one input and one output."}
+
+{defaction (warnAboutLeftover $info)
+  doc: "This action will call the leftover_warning() function in lunch.py"
+  imp: (pyAction "+" (pyMod "spark_examples.lunch" "leftover_warning"))}
+
+#----------------------- Procedures:
+
+#Main procedure. It will display the usage for this example.
+{defprocedure |Describe Lunch|
+ cue: [do: (describeLunch +$args)]
+ body: 
+ [seq:
+   [do: (print "---------------------------------------------------" [])]
+   [do: (print "To run this demo, try one of the following actions:" [])]
+   [do: (print "[do: (getLunch 30 $z)]" [])]
+   [do: (print "[do: (getLunch 7 $z)]" [])]
+   [do: (print "[do: (getLunch 11 $z)]" [])]
+   [do: (print "[do: (getLunch 1 $z)]" [])]
+   [do: (print "---------------------------------------------------" [])]
+  ]}
+
+#This procedure will be called if you have no money.
+{defprocedure no_lunch
+ cue: [do: (getLunch +$money -$r)]
+ precondition: (> 2 $money)
+ body:
+ [parallel:
+   [select:
+      (and (Food $f $p) (= $f "Leftover"))
+        [seq:
+          [do: (print "You can finish your leftovers." [])]
+          [retract: (Food $f $p)] # no more leftovers.
+        ]
+      (True)
+        [do: (print "Sorry, you have no money to eay." [])]
+   ]
+   [set: $r $money]
+ ]
+}
+
+#This procedure will be called if you have enough money for a sandwich.
+{defprocedure get_lunch_sandwich
+ cue: [do: (getLunch +$money -$r)]
+ precondition: (BetweenAndIncluding 2 $money 12)
+ body:
+ [seq:
+   # The next line is just a fancy way to find the most expensive food that we can afford.
+   [context: (and (Food $food $price) (<= $price $money) 
+               (not (exists [$ff $pp] (and (Food $ff $pp) (!= $food $ff) (<= $pp $money) (< $price $pp)))))]
+   [set: $r (subtract $money $price)]
+   [do: (print "You can afford to eat a %s. Now you have $%s" [$food $r])]
+ ]
+}
+
+#This procedure will be called if you have enough money for a chinese food.
+{defprocedure get_lunch_chinese
+ cue: [do: (getLunch +$money -$r)]
+ precondition: (Between 10 $money 22)
+ body:
+ [seq:
+   #Finding the price of chinese food:
+   [context: (and (Food $food $price) (= $food "Chinese Food"))]
+   [set: $r (subtract $money $price)]
+   [do: (print "You can eat %s. Now you have $%s" [$food $r])]
+ ]
+}
+
+#This procedure will be called if you have enough money for steak.
+{defprocedure get_lunch_steak
+ cue: [do: (getLunch +$money -$r)]
+ precondition: (>= $money 20)
+ body:
+ [seq:
+   #Another way to find the price:
+   [context: (Food "Steak" $price)]
+   [set: $r (subtract $money $price)]
+   [do: (print "You can afford to eat Steak. Now you have $%s" [$r])]
+   [conclude: (Food "Leftover" 0)] #you could not finish your food. Some leftover.
+ ]
+}
+
+#This procedure will be called whenever there is some leftover.
+{defprocedure |warn the user to eat the leftover soon|
+ cue: [newfact: (Food +$f +$p)]
+ precondition: (= $f "Leftover")
+ body:
+  [do: (warnAboutLeftover "You have Some Leftovers. Eat it soon.")]
+}
+
+exportall:
+

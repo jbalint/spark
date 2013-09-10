@@ -1,0 +1,36 @@
+module: spark.util.partial
+
+importfrom: spark.lang.types structure
+importall: spark.lang.bz
+
+{defpredicate (TestPredicateSpec +$partialPredicateSpec $result)
+  doc: "$partialPredicateSpec is a partial structure, whose functor is the fully qualified name of a predicate, and whose elements are values to pass as input arguments to that predicate, or missing to indicate an output argument. $result is bound to a similar structure (but with all elements bound) for each solution to that predicate."
+  imp: {pred [+$partial -$result]
+	 (and (= $f (functor $partial))
+	      (once (PartialBZ $partial $b $z))
+	      (ApplyPredToBZ $f $b $z)
+	      (= $result (structure $f (termsEvalEnd $b $z))))}}
+
+
+{defaction (doActionSpec +$partialActionSpec $result)
+  doc: "$partialActionSpec is a partial structure, whose functor is the fully qualified name of an action, and whose elements are values to pass as input arguments to that action, or missing to indicate an output argument. $result is bound to a similar structure (but with all elements bound) when the action succeeds."
+  imp: {task [+$partial -$result]
+	 [seq:
+	   [set: $f (functor $partial)]
+	   [context: (PartialBZ $partial $b $z)]
+	   [do: (applyActToBZ $f $b $z)]
+	   [set: $result (structure $f (termsEvalEnd $b $z))]
+	   ]}}
+
+{deffunction (evalFunctionSpec +$fullFunctionSpec)
+  doc: "$fullFunctionSpec is a non-partial structure, whose functor is the fully qualified name of a function, and whose elements are values to pass as input arguments to that action."
+  imp: {fun [$struct]
+	 (if (PartialBZ $struct $b $z)
+	     (applyFunToBZ (functor $struct) $b $z)
+	     (_error "Invalid argument"))}}
+
+
+{deffunction (_error +$string)
+  imp: (pyFunction "+" (pyModRaw "spark.util.partial" "throwLowError"))}
+
+exportall:

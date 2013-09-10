@@ -1,0 +1,203 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 24 $" *#
+#* $Source: /homedir/cvs/cvsroot/spark/src/spark/lang/meta.spark,v $ *#
+#*****************************************************************************#
+
+#main: test_meta
+
+importall: spark.lang.list
+importall: spark.lang.event
+
+export: Objective ObjectiveAttributes ProcInstId ProcInstProcName
+ TaskContext TaskId getSelfTask
+ getSelfProcInst forceSucceed TaskExprFirstTaskExprs procInstPrintStack
+ TaskExprNextTaskExprs 
+ taskIdForSubTask ProcInstBodyTaskExpr ProcModule TaskModule
+ ModuleName ProcPackage ProcedureModule TaskParentID ProcedureParentID
+ TaskIdSuccessor TaskIdStatement GetProcFromTframe PredicateParameters
+ FailValue GoalOutputParameters GoalInputParameters TaskName ProcedureName TaskParentName
+ CurrentTFrame CurrentEvent IsIntended getIntentions addEphemeral
+ ProcInstSymbol
+
+{defpredicate (Objective $pi_or_task $obj_task)
+  doc: ""
+  imp: (pyPredicate "+-" (pyModRaw "spark.lang.meta_aux" "objective"))}
+
+{defpredicate (ObjectiveAttributes $goalIntendEvent $attrs)
+  doc: "Cache of the attributes associated with a goal - used by Ken's user interface"}
+
+{defpredicate (ProcInstId $tframe $id)
+  doc: "From procedure instance find id and vice versa"
+  imp: (pyPredicate "??" (pyModRaw "spark.lang.meta_aux" "tframe_id"))}
+
+{defpredicate (ProcInstProcName $pi $proc_name)
+  doc: "Get name of generic procedure for procedure instance"
+  imp: (pyPredicate "+-" (pyModRaw "spark.lang.meta_aux" "pi_procedure_name"))}
+
+{defpredicate (TaskContext $pi_or_task $parent_task)
+  doc: "from a procedure instance or task, find the immediate parent task"
+  imp: (pyPredicate "+-" (pyModRaw "spark.lang.meta_aux" "task_context"))}
+
+
+{defpredicate (TaskId $task $id)
+  doc: "From task find id and vice versa (only works for tasks that have started)"
+  imp: (pyPredicate "??" (pyModRaw "spark.lang.meta_aux" "task_id"))}
+
+{defpredicate (TaskIdSuccessor $task_id $next_task_id)
+  doc: "Note, must use task_id as the task may not exist yet"
+  imp: (pyPredicateSeq "+-" (pyModRaw "spark.lang.meta_aux" "taskid_successors"))}
+
+{defpredicate (TaskIdStatement $task_id $statement_structure)
+  doc: ""
+  imp: (pyPredicate "+-" (pyModRaw "spark.lang.meta_aux" "taskid_statement"))}
+
+
+{defaction (getSelfTask $task)
+  doc: "Get the task of the procedure instance that performs this action"
+  imp: (pyModRaw "spark.lang.meta_aux" "GetSelfTask")}
+
+{defaction (getSelfProcInst $pi)
+  doc: "Get the procedure instance that performs this action"
+  imp: (pyModRaw "spark.lang.meta_aux" "GetSelfProcInst")}
+
+{defpredicate (CurrentTFrame $pi)
+  doc: "In the body of a procedure instance, return that procedure instance"
+  imp: (pyPredicate "A-" (pyModRaw "spark.internal.engine.agent" "agentCurrentTFrame"))}
+
+{defpredicate (CurrentEvent $task)
+  doc: "In the precondition or body of a procedure instance, return the event that triggered the procedure instance"
+  imp: (pyPredicate "A-" (pyModRaw "spark.internal.engine.agent" "agentCurrentEvent"))}
+
+{defaction (procInstPrintStack $pi)
+  doc: "Print the spark procedure instances from the objective for $pi down to $pi itself."
+  imp: (pyAction "+" (pyMeth "tfPrintStack"))}
+
+{defaction (forceSucceed $task)
+  doc: "Make the task succeed and stop execution of any procedure instances."}
+
+{defpredicate (TaskExprFirstTaskExprs $taskexpr $first_taskexprs)
+  doc: "Find the list of initial basic taskexprs that will be executed."
+  imp: (pyPredicateSeq "+-" (pyModRaw "spark.lang.meta_aux" "find_first_taskexpr"))}
+
+{defpredicate (TaskExprNextTaskExprs $taskexpr $next_taskexprs)
+  doc: "For a basic taskexpr, find the list of immediate successor taskexprs that will be executed."
+  imp: (pyPredicateSeq "+-" (pyModRaw "spark.lang.meta_aux" "find_next_taskexpr"))}
+
+{deffunction (taskIdForSubTask $procinstid $tasklabel)
+  doc: "Compute the task id from a procedure instance ID and a task expression label"
+  imp: (pyFunction "++" (pyModRaw "spark.lang.meta_aux" "taskIdForSubTask"))}
+
+{defpredicate (ProcInstBodyTaskExpr $pi $taskexpr)
+  doc: "retrieve the body: taskexpression for a given procedure"
+  imp: (pyPredicate "+-" (pyModRaw "spark.lang.meta_aux" "get_pi_body"))}
+
+{defpredicate (GetProcFromTframe $tframe $procedure)
+  doc: "Get the procedure from its tframe"
+  imp: (pyPredicate "+-" (pyModRaw "spark.lang.meta_aux" "get_procedure_from_tframe"))}
+
+{defpredicate (ProcModule $procedure $module)
+  doc: "Get the module of a procedure"
+  imp: (pyPredicate "+-" (pyModRaw "spark.lang.meta_aux" "procedure_module"))}
+
+{defpredicate (TaskModule $task $module)
+  doc: "Get the module of a procedure"
+  imp: (pyPredicate "+-" (pyModRaw "spark.lang.meta_aux" "task_module"))}
+
+{defpredicate (ModuleName $module $modname)
+  doc: "Get the name of a module"
+  imp: (pyPredicate "+-" (pyModRaw "spark.lang.meta_aux" "module_name"))}
+
+{defpredicate (ProcPackage $procedure $packageName)
+  doc: "Get the package name of a procedure"
+  imp: (pyPredicate "+-" (pyModRaw "spark.lang.meta_aux" "procedure_packagename"))}
+
+{defpredicate (FailValue $failure $value)
+  doc: "Tests whether $failure was caused by a fail: action and if so, returns the value given"
+  imp: (pyPredicate "+-" (pyModRaw "spark.lang.meta_aux" "failValue"))}
+
+{defpredicate (ProcedureName $tframe $name)
+  doc: "Given a procedure tframe, it returns its name"
+  imp: (pyPredicate "+-" (pyModRaw "spark.lang.meta_aux" "getProcedureName"))}  
+
+{defpredicate (TaskParentName $tframe $name)
+  doc: "Given a task tframe, it returns its parent's name"
+  imp: (pyPredicate "+-" (pyModRaw "spark.lang.meta_aux" "getTaskParentName"))}  
+
+{defpredicate (TaskParentID $tframe $id)
+  doc: "Given a task tframe, it returns its parent's ID"
+  imp: (pyPredicate "+-" (pyModRaw "spark.lang.meta_aux" "getTaskParentID"))}  
+
+{defpredicate (ProcedureParentID $tframe $id)
+  doc: "Given a procedure tframe, it returns its parent's ID"
+ imp: {pred [$tframe $id] (and (PITriggeringEvent $tframe $event) (ObjectId $event $id))}}
+
+{defpredicate (ProcedureModule $tframe $modname)
+imp: {pred [$tframe $modname] (and (GetProcFromTframe $tframe $proc) (ProcModule $proc $module) (ModuleName $module $modname))}}
+
+{defpredicate (TaskName $task $name)
+  doc: "Given a task, it returns its name"
+  imp: (pyPredicate "+-" (pyModRaw "spark.lang.meta_aux" "getTaskName"))}  
+
+{defpredicate (GoalInputParameters $tframe $args)
+  doc: "Given an instance of GoalEvent it returns its input arguments."
+  imp: (pyPredicate "A+-" (pyModRaw "spark.lang.meta_aux" "getInputGoalParameters"))}  
+
+{defpredicate (GoalOutputParameters $tframe $args)
+  doc: "Given an instance of GoalEvent it returns its output arguments."
+  imp: (pyPredicate "A+-" (pyModRaw "spark.lang.meta_aux" "getOutputGoalParameters"))}  
+
+{defpredicate (PredicateParameters $tframe $args)
+  doc: "Given an instance of AddFactEvent, it returns its arguments"
+  imp: (pyPredicate "A+-" (pyModRaw "spark.lang.meta_aux" "getPredicateParameters"))}
+
+{defaction (getIntentions $intentions)
+  doc: "Return a list of current intentions."
+  imp: (pyAction "A-" (pyModRaw "spark.lang.meta_aux" "getIntentions"))}
+
+{defpredicate (IsIntended $intention)
+  doc: "Determine whether $intention is being intended."
+  imp: (pyPredicate "A+" (pyModRaw "spark.lang.meta_aux" "isIntended"))}
+
+{defaction (addEphemeral $symbol rest: +$args)
+  doc: "Create an ephemeral"
+  imp: (pyAction "A+*" (pyMeth "add_ephemeral"))}
+
+{defpredicate (ProcInstSymbol +$tframe $symbol)
+  doc: "If $tframe is a procedure instance, return the symbol name of the procedure"
+  imp: (pyPredicate "A+-" (pyModRaw "spark.lang.meta_aux" "procInstSymbol"))}
+
+## {defaction (_testAction +$args)}
+## {defprocedure _testProcedure
+##   cue: [do: (_testAction +$ignore_args)]
+##   body: [context: (and (CurrentlyIntended $x)
+## 		       (ProcInstSymbol $x $sym)
+## 		       (Properties $sym $props))
+## 	 do: (print "$sym is %s, properties are %s" [$sym $props])]
+##   properties: [`funny]}

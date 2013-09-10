@@ -1,0 +1,118 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 24 $" *#
+#* $Source: $ *#
+#*****************************************************************************#
+importfrom: spark.io.file
+
+{defaction (createTraverseObject $action $object)
+  doc: "create the execution traverse tree." 
+  imp: (pyAction "A+-" (pyModRaw "spark.util.traverse" "RootTask"))}
+
+{deffunction (getTraverseTree $object $depth)
+  doc: "create a traverse by a traverse object" 
+  imp: (pyFunction "++" (pyMeth "getNode"))}
+
+{defaction (removeUnnecessaryNodes $tree)
+  doc: "remove succees, fail, context, set, retract, retractall, wait nodes from a tree." 
+  imp: (pyAction "+" (pyMeth "removeUnnecessaryNodes"))}
+  
+{defaction (removeUnnecessaryLeaves $tree)
+  doc: "clean up the tree and remove the unnecessary leaves" 
+  imp: (pyAction "+" (pyMeth "removeUnnecessaryLeaves"))}
+  
+{defaction (removeUnwantedNodes $tree $unwanted)
+  doc: "removes any unwanted nodes defined by the user." 
+  imp: (pyAction "++" (pyMeth "removeUnwantedNodes"))}
+  
+{defaction (removeLibraryActions $tree)
+  doc: "removes the spark primitive actions defined in the libraries from a tree." 
+  imp: (pyAction "+" (pyMeth "removeLibraryActions"))}
+  
+{defaction (generateUnwantedList $input $output)
+  doc: "read the input file" 
+  imp: (pyAction "+-" (pyMod "spark.util.traverse" "generateUnwantedList"))}
+  
+{deffunction (getTraverseXMLForm $tree)
+  doc: "given a tree, it generates its XML form." 
+  imp: (pyFunction "+" (pyMeth "getXML"))}
+  
+{deffunction (getTraverseHTMLForm $tree)
+  doc: "given a tree, it generates its HTML form." 
+  imp: (pyFunction "+" (pyMeth "getHTML"))}
+
+{deffunction (getTraverseDOTForm $tree)
+  doc: "given a tree, it generates its DOT form." 
+  imp: (pyFunction "+" (pyMeth "getDOT"))}
+
+{deffunction (getTraverseTreeForm $tree $detail)
+  doc: "given a tree, it generates its Tree form. $detail is 0, 1, or 2." 
+  imp: (pyFunction "++" (pyMeth "getTree"))}
+ 
+  
+{defaction (saveHTML $action $name $unwanted)}
+
+{defaction (saveDOT $action $name $unwanted)}
+
+{defprocedure _saveDOT
+  cue: [do: (saveDOT +$action +$name +$unwanted)]
+  body: [seq:
+    [do: (createTraverseObject $action $object)]
+    [set: $tree (getTraverseTree $object 30)]
+    [do: (generateUnwantedList $unwanted $unwanted_list)]
+    [do: (removeUnwantedNodes $tree $unwanted_list)]
+    [do: (removeLibraryActions $tree)]
+    [do: (removeUnnecessaryNodes $tree)]
+    [do: (removeUnnecessaryLeaves $tree)]
+    [set: $dot (getTraverseDOTForm $tree)]
+    [do: (open $name "w" $desc)]
+    [do: (write $desc $dot)]
+    [do: (close $desc)]
+    [do: (print "Traverse succeeded." [])]
+    ]}
+
+{defprocedure _saveHTML
+  cue: [do: (saveHTML +$action +$name +$unwanted)]
+  body: [seq:
+    [do: (createTraverseObject $action $object)]
+    [set: $tree (getTraverseTree $object 30)]
+    [do: (generateUnwantedList $unwanted $unwanted_list)]
+    [do: (removeUnwantedNodes $tree $unwanted_list)]
+    [do: (removeLibraryActions $tree)]
+    [do: (removeUnnecessaryNodes $tree)]
+    
+    [do: (removeUnnecessaryLeaves $tree)]
+    [set: $html (getTraverseHTMLForm $tree)]
+  	[do: (open $name "w" $desc)]
+  	[do: (write $desc $html)]
+  	[do: (close $desc)]
+    [do: (print "Traverse succeeded." [])]
+  	]}
+
+exportall:

@@ -1,0 +1,107 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 367 $" *#
+#* $Source: /homedir/cvs/cvsroot/spark/src/spark/tests/determined_test.spark,v $ *#
+#*****************************************************************************#
+main: dtest
+
+importall: spark.tests.unit
+
+{defaction (dtest $args)}
+
+{defpredicate (P $x $y)
+  imp: (determined "+-")}
+
+{defpredicate (Q $x)
+  imp: (determined "-")}
+
+## {defpredicate (Q $x $y)}
+## (Q 1 10)
+## (Q 1 11)
+
+{defprocedure _dtest 
+  cue: [do: (dtest $args)]
+  precondition: (Ground $args)
+  body: [seq:
+	  [conclude: (P 1 0)]
+	  [conclude: (P 1 1)]
+	  [do: (print "There should only be one solution:" [])]
+	  [forall: [$x1 $y1] (P $x1 $y1)
+		   [do: (print "(P %s %s)" [$x1 $y1])]]
+          [do: (print "Context Test %s" [(solutionspat [$x2 $y2] (P $x2 $y2) [$x2 $y2])])]
+          [context: (= [[1 1]] (solutionspat [$x3 $y3] (P $x3 $y3) [$x3 $y3]))]
+	  [conclude: (Q 0)]
+	  [conclude: (Q 1)]
+          [context: (= [[1]] (solutionspat [$x4] (Q $x4) [$x4]))]
+          [do: (print "Determined Test Success" [])]]
+}
+
+{defaction (determined_unit_tests $args)}
+{defprocedure _determined_unit_tests 
+  cue: [do: (determined_unit_tests $args)]
+  precondition: (Ground $args)
+  body: [seq:
+	  [conclude: (P 1 0)]
+	  [conclude: (P 1 1)]
+	  [do: (print "There should only be one solution:" [])]
+	  [forall: [$x1 $y1] (P $x1 $y1)
+		   [do: (print "(P %s %s)" [$x1 $y1])]]
+          [do: (print "Context Test %s" [(solutionspat [$x2 $y2] (P $x2 $y2) [$x2 $y2])])]
+          [do: (AssertEquals [[1 1]] (solutionspat [$x $y] (P $x $y) [$x $y]))]
+          [do: (print "Determined Tests Complete, ALL TESTS SUCCEEDED" [])]]
+}
+
+{defaction (unit_determined_test $args)}
+{defprocedure Unit_Determined_Test
+  cue: [do: (unit_determined_test $args)]
+  precondition: (Ground $args)
+  body: [seq:
+    [conclude: (P 1 0)]
+    [conclude: (P 1 1)]
+    [do: (print "There should only be one solution:" [])]
+    
+	  [forall: [$x1 $y1] (P $x1 $y1)     
+	    [do: (print "(P %s %s)" [$x1 $y1])]]
+	  [do: (print "Context Test %s" [(solutionspat [$x2 $y2] (P $x2 $y2) [$x2 $y2])])]
+    [try:
+      #[do: (AssertSucceed $determinedtask)]
+      [do: (AssertEquals [[1 1]] (solutionspat [$x $y] (P $x $y) [$x $y]))]
+      [do: (actTestSucceed "unit_determined_test")]
+      [fail: (funcTestFailed "unit_determined_test" "solutionspat failed")]
+      []
+    ]
+  ]
+}
+
+export: determined_unit_tests
+
+## {defprocedure dtest_response
+##   cue: [newfact: (P $x $y)]
+##   precondition: (Q $x $z)
+##   body: [do: (print "(P %s %s)(Q %s %s)" [$x $y $x $z])]}

@@ -1,0 +1,90 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 24 $" *#
+#* $Source: /homedir/cvs/cvsroot/spark/src/spark/tests/procmod_test.spark,v $ *#
+#*****************************************************************************#
+main: procmod_main
+
+importall: spark.lang.list
+importall: spark.lang.meta 
+importall: spark.lang.advice
+importall: spark.tests.unit
+
+{defaction (procmod_test $x)}
+{defaction (procmod_unit_tests $x)}
+{defaction (procmod_main $x)}
+
+{defpredicate (procmodp $x)}
+
+{defprocedure _procmod_unit_tests
+  cue: [do: (procmod_unit_tests $args)]
+  precondition: (Ground $args)
+  body: [seq: 
+          [forall: [$sym $proc $name $mod $modname]
+		 (and (Do $sym $proc $name) 
+		      (ProcModule $proc $mod)
+		      (ModuleName $mod $modname))
+              [try: [context: (and (= $modname "spark.tests.procmod_test") (= $name (@ "procmod_unit_tests")))]
+                [conclude: (procmodp 1)]
+                [] [seq: [succeed: ] [do: (print "N[%s]" [$name])]] ]
+          ]
+          [try: [context: (procmodp 1)]
+                [do: (print "Procmod Test Complete, ALL TESTS SUCCEEDED" [])]
+                []
+                [seq:
+                  [do: (print "ERROR: Procmod test unable to get handle on procmod_unit_tests" [])]
+                  [fail: "procmod tests failed"]
+                ]]
+        ]}
+
+{defprocedure _procmod_test
+  cue: [do: (procmod_test $args)]
+  precondition: (Ground $args)
+  body: [forall: [$sym $proc $name $mod $modname]
+		 (and (Do $sym $proc $name) 
+		      (ProcModule $proc $mod)
+		      (ModuleName $mod $modname))
+	  [do: (print "[%r %r %r %r]" [$sym $name $mod $modname])]
+	  ]
+  doc: "print debug output for the procmod tests"
+}
+
+{defprocedure _procmod_main
+  cue: [do: (procmod_main $args)]
+  precondition: (Ground $args)
+  body:
+   [seq:
+     [do: (procmod_test $args)]
+     [do: (procmod_unit_tests $args)]
+   ]
+  doc: "run both the debug output and the unit tests of this test suite"
+}
+
+
+export: procmod_unit_tests

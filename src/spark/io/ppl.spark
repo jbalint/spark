@@ -1,0 +1,137 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 24 $" *#
+#* $Source: /homedir/cvs/cvsroot/spark/src/spark/io/ppl.spark,v $ *#
+#*****************************************************************************#
+module: spark.io.ppl
+
+#importfrom: spark.io.oaa Solvable
+#importfrom: spark.lang.common
+importfrom: spark.lang.meta Objective ProcModule ModuleName
+importfrom: spark.tests.settings Debug
+main: checkPPLPrinting
+export: TranslateProcedureToPPL startPPLExecutionTrace stopPPLExecutionTrace PPLExecutionTraceFile
+
+#(Solvable "TranslateProcedureToPPL" (qent TranslateProcedureToPPL))
+
+{defpredicate (TranslateProcedureToPPL $name $result)
+  imp: (pyPredicate "A+-" (pyModRaw "spark.io.ppl" "ppl_translate_procname"))}
+{defpredicate (MyPr $format rest: $arglist)
+  imp: (pyPredicate "++*" (pyModRaw "spark.lang.advice_aux" "myprint"))}
+
+{defaction (printModulePPL $modname)}
+{defprocedure printModulePPLProcedure
+  cue: [do: (printModulePPL $modname)]
+  precondition: (Ground $modname)
+  body: [forall: [$x $y $z $m $result]
+		 (and (Do $x $y (@ $z)) (ProcModule $y $m) (ModuleName $m $modname) (TranslateProcedureToPPL $z $result))
+		 [do: (print "%s" [$result])]]}
+
+
+{deffunction (pplTranslateTFrame $tframe)
+  imp: (pyFunction "A+" (pyModRaw "spark.io.ppl" "ppl_translate_procinst"))}
+
+{defaction (appendToFile $string $filename)
+  imp: (pyAction "++" (pyModRaw "spark.io.ppl" "appendToFile"))}
+
+{defaction (removeFile $filename)
+  imp: (pyAction "+" (pyModRaw "spark.io.ppl" "removeFile"))}
+
+{defpredicate (PPLExecutionTraceFile $filename)
+  imp: (determined "-")}
+(PPLExecutionTraceFile "/dev/stderr")
+
+
+{defaction (startPPLExecutionTrace)
+  imp: {task [] [seq: [context: (PPLExecutionTraceFile $filename)]
+		      [do: (appendToFile "" $filename)] #ensure it exists
+		      [do: (removeFile $filename)]
+		      [conclude: (Debug "PPL")]]}}
+
+{defaction (stopPPLExecutionTrace)
+  imp: {task [] [retract: (Debug "PPL")]}}
+  
+{defprocedure printCompletedProcedure
+  cue: [newfact: (CompletedProcedure $tframe)]
+  precondition: (and #(MyPr "MyPr CompletedProcedure - %s" $tframe)
+		     (Debug "PPL")
+		     #(MyPr "Testing Objective")
+		     (Objective $tframe $_obj)
+		     #(MyPr "Objective true")
+		     )
+  body: [seq:
+	  #[do: (print "Completed %r" [$tframe])]
+	  [context: (= $out (pplTranslateTFrame $tframe))]
+	  #[do: (print "Completed step 2" [])]
+	  [context: (PPLExecutionTraceFile $filename)]
+	  #[do: (print "Completed step 2" [])]
+	  [do: (appendToFile $out $filename)]]
+  }
+{defprocedure printFailedProcedure
+  cue: [newfact: (FailedProcedure +$tframe +$_reason)]
+  precondition: (and (Debug "PPL") (Objective $tframe $_obj))
+  body: [seq:
+	  #[do: (print "Failed %r" [$tframe])]
+	  [context: (= $out (pplTranslateTFrame $tframe))]
+	  #[do: (print "Failed step 2" [])]
+	  [context: (PPLExecutionTraceFile $filename)]
+	  #[do: (print "Failed step 3" [])]
+	  [do: (appendToFile $out $filename)]]
+  }
+
+################################################################
+# main routine for doing a simple test
+
+{defaction (checkPPLPrinting $args)}
+{defprocedure test1
+  cue: [do: (checkPPLPrinting $args)]
+  precondition: (Ground $args)
+  body: [seq: [conclude: (Debug "PPL")]
+	      [try: [do: (act1 2 $_x)] [] [] []]
+	      [retract: (Debug "PPL")]
+	      ]}
+
+{defaction (act1 $in $out)}
+{defprocedure act1a
+  cue: [do: (act1 +$in -$out)]
+  precondition: (> $in 0)
+  body: [seq: [set: $new (- $in 1)]
+	      [do: (act1 $new $out)]
+	      [do: (act1 $new $_out)]]}
+
+{defpredicate (Foo $x)}
+
+{defprocedure act1b
+  cue: [do: (act1 +$in -$out)]
+  precondition: (<= $in 0)
+  body: [set: $out "done"
+	 conclude: (Foo $in)]}
+
+  
+

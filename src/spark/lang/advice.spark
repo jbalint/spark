@@ -1,0 +1,149 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 24 $" *#
+#* $Source: /homedir/cvs/cvsroot/spark/src/spark/lang/advice.spark,v $ *#
+#*****************************************************************************#
+importall: spark.lang.list
+
+# event.e_sync_parent() is true if event is synchronous
+{defpredicate (EventIsSolver +$event) 
+  imp: (pyPredicate "+" (pyMeth "is_solver"))}
+
+# agent.add_tframe($tframe) intends $tframe into the intention structure
+{defaction (intendTFrame +$tframe)
+  imp: (pyAction "A+" (pyMeth "add_tframe"))}
+
+# tframe.features() returns a list of features
+{defpredicate (Feature +$tframe_or_event $feature)
+  imp: (pyPredicateSeq "A+-" (pyModRaw "spark.lang.advice_aux" "get_features"))}
+{deffunction (features $tframe_or_event) 
+  imp: (pyFunction "A+" (pyModRaw "spark.lang.advice_aux" "get_features"))}
+
+# tframe.roles(agent) returns a list of role structures
+{defpredicate (Role +$tframe $role)
+  imp: (pyPredicateSeq "A+-" (pyModRaw "spark.internal.repr.procedure" "tframe_roles"))}
+{deffunction (roles $tframe)
+  imp: (pyFunction "A+" (pyModRaw "spark.internal.repr.procedure" "tframe_roles"))}
+
+{defpredicate (AncestorEvent +$event $ancestor)
+  imp: (pyPredicateSeq "+-" (pyModRaw "spark.internal.repr.taskexpr" "ancestor_events"))}
+{defpredicate (AncestorTFrame +$event $ancestor)
+  imp: (pyPredicateSeq "+-" (pyModRaw "spark.internal.repr.taskexpr" "ancestor_tframes"))}
+
+
+# The following should be replaced by defconstant
+{defpredicate (AdviceWeight $kind $numeric_weight)}
+{defconstant strong_prefer}
+(AdviceWeight strong_prefer 10000)
+{defconstant strong_avoid}
+(AdviceWeight strong_avoid -10000)
+{defconstant prefer}
+(AdviceWeight prefer 100)
+{defconstant avoid}
+(AdviceWeight avoid -100)
+{defconstant weak_prefer}
+(AdviceWeight weak_prefer 1)
+{defconstant weak_avoid}
+(AdviceWeight weak_avoid -1)
+
+{defpredicate (AdviceActive $label)}
+{defpredicate (ConsultActive $label)}
+
+# These are now defined in spark.builtin:
+#{defpredicate (Consult $label $event_tframes_pc)}
+#{defpredicate (Advice $label $kind $event_pc $tframe_pc $doc)}
+#{defaction (consultUser $consults $event $orig_tframes $pref_tframes $selected_tframe)}
+
+{defaction (resolveAdvice +$tframes +$advice +$event $resolved_advice)
+  imp: (pyAction "A+++-" (pyModRaw "spark.lang.advice_aux" "resolveAdvice"))}
+
+{defpredicate (MyPr +$format rest:+$arglist)
+  imp: (pyPredicate "++*" (pyModRaw "spark.lang.advice_aux" "myprint"))}
+
+{defpredicate (ContextFeature +$event $feature)
+  imp: {pred [+$event $feature] (and (or (= $event $e)
+                                        (AncestorEvent $event $e)
+                                        (AncestorTFrame $event $e))
+                                    (Feature $e $feature))}}
+{defpredicate (ContextRole +$event $role)
+  imp: {pred [+$event $role] (and (AncestorTFrame $event $e)
+                                 (Role $e $role))}}
+
+{defprocedure _Advice
+  cue: [synchronous: (SOAPI +$event +$tframes)]
+  precondition: (and#(MyPr "TESTING ADVICE PRECONDITION for SOAPI event %s " $event)
+                     (EventIsSolver $event) 
+                    #(MyPr "TESTING ADVICE - EventIsSolver %s" (length $tframes))
+                     (Length $tframes $tframes_len)
+                     (> $tframes_len 1)
+                    #(MyPr "Multiple tframes")
+                     (= $adv (solutionspat
+                            [$label $kind $gppc $tframe $doc]
+                            (and #(MyPr "A") 
+                                 (AdviceActive $label)
+                                 #(MyPr "B %s" $label)
+                                 (Advice $label $kind $gppc $doc)
+                                 #(MyPr "C")
+                                 (Member $tframe $tframes)
+                                 #(MyPr "D")
+                                 (applypred $gppc $event $tframe)
+                                 #(MyPr "E")
+                                 )
+                            [$tframe $label $kind]))
+                     #(MyPr "Solutions %s" $adv)
+                     (once
+                      (or (and (Length $adv $adv_len)
+                               (> $adv_len 0)) # some advice was applicable
+                          (and (ConsultActive $clabel)
+                               (Consult $clabel $pc) # some Consult was applicable
+                               (applypred $pc $event $tframes)))
+                      )
+                     )
+  body: [seq:
+          [do: (resolveAdvice $tframes $adv $event $x1)]
+          [select: (= $x1 [$tf])        # one preferred choice
+                   []
+                   (and (= $consults
+                           (solutionspat [$label1 $pc1]
+                                         (and (Consult $label1 $pc1)
+                                              (applypred $pc1 $event $x1))
+                                         $label1))
+                        (Length $consults $consults_len)
+                        (> $consults_len 0))
+                   [do: (consultUser $consults $event $tframes $x1 $tf)]
+                   (True)
+                   [seq:
+                    [do: (print "Multiple TFrames to select between %s" [$x1])]
+                    [context: (Index 0 $tf $x1)]]]
+          #[do: (intendTFrame $tf)]
+          [conclude: (CurrentlyIntended $tf)]
+          ]
+  }
+
+exportall:

@@ -1,0 +1,133 @@
+#*****************************************************************************#
+#* Copyright (c) 2004-2007, SRI International.                               *#
+#* All rights reserved.                                                      *#
+#*                                                                           *#
+#* Redistribution and use in source and binary forms, with or without        *#
+#* modification, are permitted provided that the following conditions are    *#
+#* met:                                                                      *#
+#*   * Redistributions of source code must retain the above copyright        *#
+#*     notice, this list of conditions and the following disclaimer.         *#
+#*   * Redistributions in binary form must reproduce the above copyright     *#
+#*     notice, this list of conditions and the following disclaimer in the   *#
+#*     documentation and/or other materials provided with the distribution.  *#
+#*   * Neither the name of SRI International nor the names of its            *#
+#*     contributors may be used to endorse or promote products derived from  *#
+#*     this software without specific prior written permission.              *#
+#*                                                                           *#
+#* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS       *#
+#* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT         *#
+#* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR     *#
+#* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT      *#
+#* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,     *#
+#* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT          *#
+#* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     *#
+#* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY     *#
+#* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT       *#
+#* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *#
+#* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.      *#
+#*****************************************************************************#
+#* "$Revision: 139 $" *#
+#* $Source: /homedir/cvs/cvsroot/spark/src/spark/tests/tests.spark,v $ *#
+#*****************************************************************************#
+
+importall: spark.tests.settings
+importall: spark.tests.unit
+importfrom: spark.tests.meta_test meta_unit_tests
+importfrom: spark.tests.list_test list_unit_tests
+importfrom: spark.tests.parallel_test parallel_unit_tests
+importfrom: spark.tests.determined_test determined_unit_tests
+importfrom: spark.tests.procmod_test procmod_unit_tests
+importfrom: spark.tests.test_simpleimp simpleimp_unit_tests
+importfrom: spark.tests.sampler_test sampler_unit_tests
+importfrom: spark.tests.forin_test forin_unit_tests
+#importfrom: spark.tests.attributes_test test_attr
+
+main: tests
+
+{defpredicate (TestsFailed $true)}
+
+{defaction (tests $args)
+  doc: "Run Test Suite (Act)"}
+{defprocedure Do_Tests
+ doc: "Run Test Suite (Proc)"
+ cue: [do: (tests $args)]
+ precondition: (Ground $args)
+ body:
+ [seq:
+    [retractall: [$x] (TestsFailed $x)]
+
+    [set: $unit_tests {task [] [do: (test_unit_tests "foo")] }]
+    [try: [do: (AssertSucceed $unit_tests)] [do: (print "===============" [])]
+          [] [do: (print "***TEST UNIT TESTS FAILED***" [])
+              conclude: (TestsFailed "true")]]
+
+    [set: $meta_tests {task [] [do: (meta_unit_tests "foo")] }]
+    [try: [do: (AssertSucceed $meta_tests)] [do: (print "===============" [])]
+          [] [do: (print "***META UNIT TESTS FAILED***" [])
+              conclude: (TestsFailed "true")]]
+
+    [set: $list_tests {task [] [do: (list_unit_tests "foo")] }]
+    [try: [do: (AssertSucceed $list_tests)] [do: (print "===============" [])]
+          [] [do: (print "***LIST UNIT TESTS FAILED***" [])
+              conclude: (TestsFailed "true")]]
+
+    [set: $parallel_tests {task [] [do: (parallel_unit_tests "foo")] }]
+    [try: [do: (AssertSucceed $parallel_tests)] [do: (print "===============" [])]
+          [] [do: (print "***PARALLEL UNIT TESTS FAILED***" [])
+              conclude: (TestsFailed "true")]]
+
+    [set: $determined_tests {task [] [do: (determined_unit_tests "foo")] }]
+    [try: [do: (AssertSucceed $determined_tests)] [do: (print "===============" [])]
+          [] [do: (print "TEST SUITE FAILURE: ***DETERMINED UNIT TESTS FAILED***" [])
+              conclude: (TestsFailed "true")]]
+
+##     [set: $procmod_tests {task [] [do: (procmod_unit_tests "foo")] }]
+##     [try: [do: (AssertSucceed $procmod_tests)] [do: (print "===============" [])]
+##           [] [do: (print "TEST SUITE FAILURE: ***PROCMOD UNIT TESTS FAILED***" [])
+##               conclude: (TestsFailed "true")]]
+
+    [set: $simpleimp_tests {task [] [do: (simpleimp_unit_tests "foo")] }]
+    [try: [do: (AssertSucceed $simpleimp_tests)] [do: (print "===============" [])]
+          [] [do: (print "TEST SUITE FAILURE: ***SIMPLEIMP UNIT TESTS FAILED***" [])
+              conclude: (TestsFailed "true")]]
+
+    [set: $sampler_tests {task [] [do: (sampler_unit_tests "foo")] }]
+    [try: [do: (AssertSucceed $sampler_tests)] [do: (print "===============" [])]
+          [] [do: (print "TEST SUITE FAILURE: ***SAMPLER UNIT TESTS FAILED***" [])
+              conclude: (TestsFailed "true")]]
+
+    [set: $forin_tests {task [] [do: (forin_unit_tests "foo")] }]
+    [try: [do: (AssertSucceed $forin_tests)] [do: (print "===============" [])]
+          [] [do: (print "TEST SUITE FAILURE: ***FORIN UNIT TESTS FAILED***" [])
+              conclude: (TestsFailed "true")]]
+
+##     [set: $attr_tests {task [] [do: (test_attr "foo")] }]
+##     [try: [do: (AssertSucceed $attr_tests)] [do: (print "===============" [])]
+##           [] [do: (print "TEST SUITE FAILURE: ***GET/SET ATTRIBUTES TESTS FAILED***" [])
+##               conclude: (TestsFailed "true")]]
+
+    [do: (print "****************************" [])]
+    [try: [context: (TestsFailed "true")] 
+          [seq:
+                [do: (print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" [])]
+                [do: (print "Tests FAILED" [])]
+                [do: (print "Some test suites failed, see above for \nspecific errors" [])]
+                [do: (print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" [])]
+                [fail: "tests failed"] ]
+          []
+          [seq:
+            [do: (print "**********************************************" [])]
+            [do: (print "Test Suite Completed, ALL TEST SUITES SUCCEEDED" [])]
+            [do: (print "**********************************************" [])]
+          ]
+      ]
+ ]
+}
+
+
+
+
+
+
+
+
