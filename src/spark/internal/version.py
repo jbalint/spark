@@ -36,7 +36,7 @@ import sys
 
 __all__ = ['MARK_THIS_MODULE_TO_DROP', 'AnyException', 'isJython', 'isPython']
 
-VERSION = "1.0.0"
+VERSION = "1.0.0-JBALINT"
 
 isJython = False
 isPython = False

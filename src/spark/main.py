@@ -39,6 +39,7 @@ import ConfigParser as configparser
 import sys
 import os
 #import threading
+import select
 
 from spark.internal.version import *
 from spark.internal.version import VERSION
@@ -46,6 +47,7 @@ from spark.internal.common import NEWPM, DEBUG
 from spark.internal.init import init_spark
 from spark.internal.standard import *
 from spark.internal.debug.interpreter import *
+from spark.internal.debug.tcp_server import *
 from spark.internal.debug.debugger import load_module, debugger_cleanup, new_agent, EC_ARGS_ERROR, EC_LOAD_ERROR, EC_DONE
 from spark.internal.debug.trace import set_log_file
 from spark.util.misc import getSparkHomeDirectory
@@ -241,6 +243,9 @@ def interpreter_loop(iscriptArg, interactiveMode, logFilenameArg):
             return
         initialCommands = fIscript.readlines()
 
+    serverSocket = open_listener_socket()
+    clientSockets = []
+
     exit = False
     while not exit:                            # loop until interrupted
         
@@ -250,7 +255,26 @@ def interpreter_loop(iscriptArg, interactiveMode, logFilenameArg):
             
             #grab commands from the command line
             try:
-                next = raw_input('spark>>> ')   # catch 'EOF' instead of breaking
+                # can't select on stdin in Jython
+                # https://wiki.python.org/jython/SelectModule
+                #fds = select.select([serverSocket, sys.stdin] + clientSockets, (), ())
+                (readfds, writefds, excfds) = select.select([serverSocket] + clientSockets, (), ())
+                for fd in readfds:
+                    if fd == serverSocket:
+                        client, addr = serverSocket.accept()
+                        print '\nConnection from ', addr
+                        clientSockets.append(client)
+                        client.setblocking(0) # necessary for Jython....
+                        next = ''
+                    elif fd == sys.stdin:
+                        next = raw_input('spark>>> ')   # catch 'EOF' instead of breaking
+                    else: # read from client socket
+                        next = fd.recv(4096)
+                        print "Command from client (", fd.getpeername(), "): ", next
+                        if not next or next.strip() == "disconnect":
+                            print "Disconnecting ", fd.getpeername()
+                            clientSockets.remove(fd)
+                            fd.close()
             except EOFError:             # do exit on end of input
                 print "\nEND of file"
                 next = "exit"
@@ -262,7 +286,8 @@ def interpreter_loop(iscriptArg, interactiveMode, logFilenameArg):
                 continue
             print next
 
-        exit = process_command(runAgent, next)
+        if next and next != "" and next != "disconnect":
+            exit = process_command(runAgent, next)
                   
 def main(*argv):
     """Main command line processing - returns exitcode integer or an exception."""

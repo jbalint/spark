@@ -178,7 +178,7 @@ def process_command(agent, next):
         elif next == "" and get_step_controller().step():
             pass
         elif next == "":
-            print "ignoring blank input line"
+            print ""#ignoring blank input line"
         # Remaining commands require the kb lock (don't block!)
         else:
             # We have the KB lock
