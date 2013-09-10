@@ -1,0 +1,101 @@
+package: tq3_reminder
+
+importfrom: spark.lang.string pyFormatString
+importall: spark.util.time
+
+##############
+# Predicates #
+##############
+
+{defpredicate (HasOrderVal $category $orderVal)
+  doc: ""
+}
+
+{defpredicate (HasName $x $name)
+  doc: ""
+}
+
+{defpredicate (IsActive $x $active)
+  doc: ""
+}
+
+{defpredicate (HasId $x $y)
+  doc: ""
+}
+
+{defpredicate (HasCategory $x $category)
+  doc: ""
+}
+
+{defpredicate (HasPriority $x $priority)
+  doc: ""
+}
+
+{defpredicate (HasDaysBetween $task $days)
+  doc: ""
+}
+
+{defpredicate (IsCompleteForDate $task $date)
+  doc: ""
+}
+
+{defpredicate (IsTask $x)
+  doc: ""
+}
+##############
+
+{defaction (taskCheck)
+}
+
+{defaction (remindTask $task)
+}
+
+{defprocedure taskCheckProc
+  cue: [do: (taskCheck)]
+  body: [forall:
+				[$task]
+				(and (IsTask $task)
+ 				     (not (IsCompleteForDate $task (formatTimeAsDate (currentTime)))))
+ 				[do: (remindTask $task)]
+		]
+}
+
+{defprocedure remindTaskProc
+  cue: [do: (remindTask +$task)]
+  precondition: (HasName $task $name)
+  body: [do: (print "Don't forget task %s (%s)" [$name $task])]
+}
+
+##################
+# Time Functions #
+##################
+
+{deffunction (subtractDaysFromTime $time $days)
+  doc: ""
+  imp: {fun [$time $days] (- $time (* $days (* 60 (* 60 24))))}
+}
+
+{deffunction (formatTimeAsDate $time)
+  doc: "Format a time (as seconds) as a YYYY/mm/dd string. c.f. spark.util.time.currentTime"
+  imp: {fun [$time] (pyFormatString "%04d/%02d/%02d" (sub (time2list $time) 0 3))}
+}
+
+########################
+### sample data below ##
+########################
+
+{defconstant mycat}
+(HasId mycat 999)
+(HasName mycat "MyCat")
+(IsActive mycat 1)
+(HasOrderVal mycat 0)
+
+
+
+{defconstant task-gtd}
+(HasId task-gtd 195)
+(HasName task-gtd "GTD")
+(IsActive task-gtd 1)
+(HasCategory task-gtd mycat)
+(HasDaysBetween task-gtd 2)
+(IsTask task-gtd)
