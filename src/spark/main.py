@@ -39,7 +39,6 @@ import ConfigParser as configparser
 import sys
 import os
 #import threading
-import select
 
 from spark.internal.version import *
 from spark.internal.version import VERSION
@@ -101,6 +100,7 @@ LOG_FILENAME="logFilename"
 SCRIPT_FILENAME="scriptFilename"
 STDOUT_BUFFERED="stdoutBuffered"
 LOGDIR="logdir"
+TCP_SERVER_MODE="tcpServerMode"
 
 #Needed for handling options given as command line args
 _DEFAULT_CONFIG_FILE = "%(sparkhome)s/config/spark.cfg"
@@ -171,6 +171,11 @@ OPTPARSER.add_option("--coverage",
                      dest=COVERAGE_MODE,
                      help="Run coverage checking",
                      action="store_true")
+OPTPARSER.add_option("--tcp-server",
+                     dest=TCP_SERVER_MODE,
+                     help="Run TCP server instead of command loop",
+                     action="store_true",
+                     default=False)
 OPTPARSER.add_option("--debugger",
                      action="store_true",
                      dest=DEBUGGER_MODE,
@@ -231,7 +236,7 @@ def step_init_fn(agent):
 #commands to run at startup
 #interactive_mode specifies whether or not we accept
 #SPARK interpreter commands from the command line.
-def interpreter_loop(iscriptArg, interactiveMode, logFilenameArg):
+def interpreter_loop(iscriptArg, interactiveMode, tcpServerMode, logFilenameArg):
     """main loop for the SPARK interpreter"""
     global mod
     initialCommands = []
@@ -243,8 +248,9 @@ def interpreter_loop(iscriptArg, interactiveMode, logFilenameArg):
             return
         initialCommands = fIscript.readlines()
 
-    serverSocket = open_listener_socket()
-    clientSockets = []
+    if tcpServerMode:
+        serverSocket = open_listener_socket()
+        clientSockets = []
 
     exit = False
     while not exit:                            # loop until interrupted
@@ -255,26 +261,10 @@ def interpreter_loop(iscriptArg, interactiveMode, logFilenameArg):
             
             #grab commands from the command line
             try:
-                # can't select on stdin in Jython
-                # https://wiki.python.org/jython/SelectModule
-                #fds = select.select([serverSocket, sys.stdin] + clientSockets, (), ())
-                (readfds, writefds, excfds) = select.select([serverSocket] + clientSockets, (), ())
-                for fd in readfds:
-                    if fd == serverSocket:
-                        client, addr = serverSocket.accept()
-                        print '\nConnection from ', addr
-                        clientSockets.append(client)
-                        client.setblocking(0) # necessary for Jython....
-                        next = ''
-                    elif fd == sys.stdin:
-                        next = raw_input('spark>>> ')   # catch 'EOF' instead of breaking
-                    else: # read from client socket
-                        next = fd.recv(4096)
-                        print "Command from client (", fd.getpeername(), "): ", next
-                        if not next or next.strip() == "disconnect":
-                            print "Disconnecting ", fd.getpeername()
-                            clientSockets.remove(fd)
-                            fd.close()
+                if tcpServerMode:
+                    next = get_next_socket_command(serverSocket, clientSockets)
+                else:
+                    next = raw_input('spark>>> ')   # catch 'EOF' instead of breaking
             except EOFError:             # do exit on end of input
                 print "\nEND of file"
                 next = "exit"
@@ -435,6 +425,7 @@ def main(*argv):
         if not exitcode:
             interpreter_loop(opts.get(SPARK, SCRIPT_FILENAME) or None,
                              opts.getboolean(SPARK, SPARK_CLI), 
+                             opts.getboolean(SPARK, TCP_SERVER_MODE),
                              opts.get(SPARK, LOG_FILENAME) or None)
         elif init_result == None or init_result == 0:
             exitcode = EC_LOAD_ERROR
