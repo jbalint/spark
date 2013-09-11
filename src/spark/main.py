@@ -249,8 +249,7 @@ def interpreter_loop(iscriptArg, interactiveMode, tcpServerMode, logFilenameArg)
         initialCommands = fIscript.readlines()
 
     if tcpServerMode:
-        serverSocket = open_listener_socket()
-        clientSockets = []
+        start_server_thread(runAgent)
 
     exit = False
     while not exit:                            # loop until interrupted
@@ -261,10 +260,7 @@ def interpreter_loop(iscriptArg, interactiveMode, tcpServerMode, logFilenameArg)
             
             #grab commands from the command line
             try:
-                if tcpServerMode:
-                    next = get_next_socket_command(serverSocket, clientSockets)
-                else:
-                    next = raw_input('spark>>> ')   # catch 'EOF' instead of breaking
+                next = raw_input('spark>>> ')   # catch 'EOF' instead of breaking
             except EOFError:             # do exit on end of input
                 print "\nEND of file"
                 next = "exit"

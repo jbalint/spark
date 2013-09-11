@@ -3,6 +3,31 @@
 import socket
 import select
 
+from threading import Thread
+
+from spark.internal.debug.interpreter import *
+
+serverSocket = None
+clientSockets = []
+
+runAgent = None
+
+def start_server_thread(runAgent_):
+    global runAgent
+    global serverSocket
+
+    runAgent = runAgent_
+    print "STARTING TCP SERVER, agent = ", runAgent
+    serverSocket = open_listener_socket()
+    t = Thread(target=lambda: process_commands())
+    t.setDaemon(True)
+    t.start()
+
+def process_commands():
+    while True:
+        next = get_next_socket_command(serverSocket, clientSockets)
+        process_command(runAgent, next.strip())
+
 def open_listener_socket():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
