@@ -1,0 +1,22 @@
+<project name="jess" basedir="." default="build">
+  <target name="build">
+	<mkdir dir="build"/>
+	<javac srcdir="." destdir="build">
+	  <include name="*.java"/>
+	</javac>
+	<jar destfile="../../lib/jess.jar"
+		 basedir="build"/>
+  </target>
+
+  <target name="run-wmii-event-follower">
+	<java classname="WmiiEventFollower"
+		  fork="true">
+	  <classpath>
+		<pathelement path="build"/>
+		<fileset dir="../../lib">
+		  <include name="mysql-connector-java.jar"/>
+		</fileset>
+	  </classpath>
+	</java>
+  </target>
+</project>
