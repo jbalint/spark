@@ -2,5 +2,5 @@ package: jess.command
 
 exportall:
 
-{defpredicate (GetCommandOutput -$output +$command)
-  imp: (pyPredicate "-+" (pyMod "jess.command" "run_command_get_output"))}
+{deffunction (commandGetOutput +$command)
+  imp: (pyFunction "+" (pyMod "jess.command" "run_command_get_output"))}
