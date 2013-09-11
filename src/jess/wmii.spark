@@ -1,0 +1,25 @@
+package: jess.wmii
+
+importall: jess.command
+importfrom: spark.lang.string formatString
+
+exportall:
+
+# Note: What are the implications & limitations of having
+# this external. and necessity of "+"
+{defpredicate (WmiiIsClient +$clientId)
+  doc: ""
+  imp: {pred
+		[+$clientId]
+		(and (WmiiHasLabel $clientId $label)
+			 (not (= "" $label)))}}
+
+{defpredicate (WmiiHasLabel +$clientId -$label)
+  doc: ""
+  imp: {pred
+		[+$clientId -$label]
+		(GetCommandOutput $label ["wmiir" "read" (formatString "/client/%s/label" [$clientId])])}}
+
+{defpredicate (WmiiHasFocus $clientId)
+  doc: "Does a client in question have focus? Only one client has focus at a time"
+  imp: (determined "-")}
