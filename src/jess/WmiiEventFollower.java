@@ -1,6 +1,7 @@
 import java.util.*;
 import java.sql.*;
 import java.io.*;
+import java.net.Socket;
 
 public class WmiiEventFollower {
 
@@ -10,6 +11,10 @@ public class WmiiEventFollower {
 	PreparedStatement insertEventStatement;
 	PreparedStatement insertClientStatement;
 	Map<String, Integer> clientDbIds = new HashMap<>();
+
+	// spark
+	Socket sparkSocket;
+	BufferedWriter sparkWriter;
 
 	// cache
 	Map<String, ClientInfo> clientInfo = new HashMap<>();
@@ -26,6 +31,15 @@ public class WmiiEventFollower {
 	}
 
 	private void sparkInit() throws IOException {
+		sparkSocket = new Socket("localhost", 9002);
+		sparkWriter = new BufferedWriter(new OutputStreamWriter(sparkSocket.getOutputStream()));
+	}
+
+	private void sendEventToSpark(String event[]) throws IOException {
+		if ("ClientFocus".equals(event[0])) {
+			sparkWriter.write(String.format("addfact (WmiiHasFocus \"%s\")\n", event[1]));
+			sparkWriter.flush();
+		}
 	}
 
 	private void databaseInit() throws SQLException {
@@ -111,6 +125,12 @@ public class WmiiEventFollower {
 				writeEventToDb(event);
 			} catch(Exception ex) {
 				System.err.println("Failed to write event to db: " + Arrays.toString(event));
+				ex.printStackTrace();
+			}
+			try {
+				sendEventToSpark(event);
+			} catch(IOException ex) {
+				System.err.println("Failed to send event to Spark: " + Arrays.toString(event));
 				ex.printStackTrace();
 			}
 		}
