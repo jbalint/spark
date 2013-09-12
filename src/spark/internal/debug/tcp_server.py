@@ -26,7 +26,8 @@ def start_server_thread(runAgent_):
 def process_commands():
     while True:
         next = get_next_socket_command(serverSocket, clientSockets)
-        process_command(runAgent, next.strip())
+        for c in next.split("\n"):
+            process_command(runAgent, c)
 
 def open_listener_socket():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
