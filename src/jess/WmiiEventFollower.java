@@ -14,6 +14,7 @@ public class WmiiEventFollower {
 	int sessionId;
 	PreparedStatement insertEventStatement;
 	PreparedStatement insertClientStatement;
+	PreparedStatement insertClientLabelStatement;
 	Map<String, Integer> clientDbIds = new HashMap<>();
 
 	// spark
@@ -59,38 +60,72 @@ public class WmiiEventFollower {
 
 		insertEventStatement = c.prepareStatement("insert into wmii_focus_event (session_id, client_id, focus_time) " +
 												  " values (?, ?, now(6))");
-		insertClientStatement = c.prepareStatement("insert into wmii_client (session_id, id, xclass, program, label) " +
-												   "values (?, ?, ?, ?, ?)",
+		insertClientStatement = c.prepareStatement("insert into wmii_client (session_id, id, xclass, program) " +
+												   "values (?, ?, ?, ?)",
 												   Statement.RETURN_GENERATED_KEYS);
+		insertClientLabelStatement = c.prepareStatement("insert into wmii_client_label values (?, now(6), ?)");
 	}
 
 	private int getClientDbId(String idString) throws SQLException, IOException {
 		Integer id = clientDbIds.get(idString);
+
 		// existing
 		if (id != null)
 			return id;
+
 		// new
 		ClientInfo ci = getClientInfo(idString);
 		insertClientStatement.setInt(1, sessionId);
 		insertClientStatement.setString(2, idString);
 		insertClientStatement.setString(3, ci.xclass);
 		insertClientStatement.setString(4, ci.program);
-		insertClientStatement.setString(5, ci.label);
 		insertClientStatement.executeUpdate();
 		ResultSet rs = insertClientStatement.getGeneratedKeys();
 		rs.next();
 		id = rs.getInt(1);
 		rs.close();
+
+		// add label
+		insertClientLabelStatement.setInt(1, id);
+		insertClientLabelStatement.setString(2, ci.label);
+		insertClientLabelStatement.executeUpdate();
+
+		// add ClientInfo to cache
 		clientDbIds.put(idString, id);
 		return id;
 	}
 
+	private void updateClientLabelIfNecessary(String idString, int clientDbId) throws IOException, SQLException {
+		ClientInfo ci = getClientInfo(idString);
+		String currentLabel = getCurrentClientLabel(idString);
+		if (ci.label.equals(currentLabel))
+			return;
+		insertClientLabelStatement.setInt(1, clientDbId);
+		insertClientLabelStatement.setString(2, currentLabel);
+		insertClientLabelStatement.executeUpdate();
+		ci.label = currentLabel;
+	}
+
 	private void writeEventToDb(String event[]) throws SQLException, IOException {
 		if ("ClientFocus".equals(event[0]) && !"<nil>".equals(event[1])) {
+			int clientDbId = getClientDbId(event[1]);
+
+			// it would be more appropriate if there was an event to catch label change, but instead we do it here
+			updateClientLabelIfNecessary(event[1], clientDbId);
+
 			insertEventStatement.setInt(1, sessionId);
-			insertEventStatement.setInt(2, getClientDbId(event[1]));
+			insertEventStatement.setInt(2, clientDbId);
 			insertEventStatement.executeUpdate();
 		}
+	}
+
+	private String getCurrentClientLabel(String idString) throws IOException {
+		String labelPath = String.format("/client/%s/label", idString);
+		Process readerProcess = new ProcessBuilder("wmiir", "read", labelPath).start();
+		BufferedReader br = new BufferedReader(new InputStreamReader(readerProcess.getInputStream()));
+		String label = br.readLine();
+		readerProcess.destroy();
+		return label;
 	}
 
 	private ClientInfo getClientInfo(String idString) throws IOException {
@@ -99,15 +134,11 @@ public class WmiiEventFollower {
 			return ci;
 		ci = new ClientInfo();
 
-		String labelPath = String.format("/client/%s/label", idString);
-		Process readerProcess = new ProcessBuilder("wmiir", "read", labelPath).start();
-		BufferedReader br = new BufferedReader(new InputStreamReader(readerProcess.getInputStream()));
-		ci.label = br.readLine();
-		readerProcess.destroy();
+		ci.label = getCurrentClientLabel(idString);
 
 		String propsPath = String.format("/client/%s/props", idString);
-		readerProcess = new ProcessBuilder("wmiir", "read", propsPath).start();
-		br = new BufferedReader(new InputStreamReader(readerProcess.getInputStream()));
+		Process readerProcess = new ProcessBuilder("wmiir", "read", propsPath).start();
+		BufferedReader br = new BufferedReader(new InputStreamReader(readerProcess.getInputStream()));
 		String l[] = br.readLine().split(":");
 		readerProcess.destroy();
 		ci.xclass = l[0];

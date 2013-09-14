@@ -1,7 +1,7 @@
 <project name="jess" basedir="." default="build">
   <target name="build">
 	<mkdir dir="build"/>
-	<javac srcdir="." destdir="build">
+	<javac srcdir="." destdir="build" debug="true">
 	  <include name="*.java"/>
 	</javac>
 	<jar destfile="../../lib/jess.jar"
