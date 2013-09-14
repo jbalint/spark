@@ -250,6 +250,14 @@ def interpreter_loop(iscriptArg, interactiveMode, tcpServerMode, logFilenameArg)
 
     if tcpServerMode:
         start_server_thread(runAgent)
+        # should really have a different option for this but oh well
+        from threading import Thread
+        import WmiiEventFollower
+        f = WmiiEventFollower()
+        print "STARTING wmii EVENT FOLLOWER"
+        t = Thread(target=lambda: f.followEvents())
+        t.setDaemon(True)
+        t.start()
 
     exit = False
     while not exit:                            # loop until interrupted
