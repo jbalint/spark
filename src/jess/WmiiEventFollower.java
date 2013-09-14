@@ -2,8 +2,12 @@ import java.util.*;
 import java.sql.*;
 import java.io.*;
 import java.net.Socket;
+import java.util.logging.Logger;
+import java.util.logging.Level;
 
 public class WmiiEventFollower {
+
+	private static final Logger log = Logger.getLogger(WmiiEventFollower.class.getName());
 
 	// db
 	Connection c;
@@ -25,9 +29,7 @@ public class WmiiEventFollower {
 		String label;
 	}
 
-	public WmiiEventFollower() throws SQLException, IOException {
-		databaseInit();
-		sparkInit();
+	public WmiiEventFollower() throws SQLException {
 	}
 
 	private void sparkInit() throws IOException {
@@ -36,7 +38,8 @@ public class WmiiEventFollower {
 	}
 
 	private void sendEventToSpark(String event[]) throws IOException {
-		if ("ClientFocus".equals(event[0])) {
+		// event[1] may be literally `<nil>' if we go to a tag/view with no clients
+		if ("ClientFocus".equals(event[0]) && !"<nil>".equals(event[1])) {
 			sparkWriter.write(String.format("addfact (WmiiHasFocus \"%s\")\n", event[1]));
 			sparkWriter.flush();
 		}
@@ -83,7 +86,7 @@ public class WmiiEventFollower {
 	}
 
 	private void writeEventToDb(String event[]) throws SQLException, IOException {
-		if (event[0].equals("ClientFocus")) {
+		if ("ClientFocus".equals(event[0]) && !"<nil>".equals(event[1])) {
 			insertEventStatement.setInt(1, sessionId);
 			insertEventStatement.setInt(2, getClientDbId(event[1]));
 			insertEventStatement.executeUpdate();
@@ -119,19 +122,52 @@ public class WmiiEventFollower {
 		Process eventReaderProcess = new ProcessBuilder("wmiir", "read", "/event").start();
 		BufferedReader eventStream = new BufferedReader(new InputStreamReader(eventReaderProcess.getInputStream()));
 		String line;
+		long sparkReconnectTime = 1;
+		long dbReconnectTime = 1;
 		while ((line = eventStream.readLine()) != null) {
 			String event[] = line.split(" ");
-			try {
-				writeEventToDb(event);
-			} catch(Exception ex) {
-				System.err.println("Failed to write event to db: " + Arrays.toString(event));
-				ex.printStackTrace();
+
+			// TODO would be nice to retry delivering the message on reconnect
+
+			// (re)connect if necessary
+			if (dbReconnectTime != 0 &&
+				System.currentTimeMillis() > dbReconnectTime) {
+				try {
+					databaseInit();
+					dbReconnectTime = 0;
+					log.info("Connected to DB");
+				} catch(SQLException ex2) {
+					dbReconnectTime = System.currentTimeMillis() + 30000;
+					log.log(Level.SEVERE, "Trouble connecting to DB, won't try for thirty seconds", ex2);
+				}
 			}
+
 			try {
-				sendEventToSpark(event);
+				if (dbReconnectTime == 0)
+					writeEventToDb(event);
+			} catch(Exception ex) {
+				log.log(Level.SEVERE, "Failed to write event to db: " + Arrays.toString(event), ex);
+				dbReconnectTime = 1;
+			}
+
+			if (sparkReconnectTime != 0 &&
+				System.currentTimeMillis() > sparkReconnectTime) {
+				try {
+					sparkInit();
+					sparkReconnectTime = 0;
+					log.info("Connected to SPARK");
+				} catch(IOException ex2) {
+					sparkReconnectTime = System.currentTimeMillis() + 30000;
+					log.log(Level.SEVERE, "Trouble connecting to SPARK, won't try for thirty seconds", ex2);
+				}
+			}
+
+			try {
+				if (sparkReconnectTime == 0) // ie we're connected
+					sendEventToSpark(event);
 			} catch(IOException ex) {
-				System.err.println("Failed to send event to Spark: " + Arrays.toString(event));
-				ex.printStackTrace();
+				log.log(Level.SEVERE, "Failed to send event to Spark: " + Arrays.toString(event), ex);
+				sparkReconnectTime = 1;
 			}
 		}
 	}
