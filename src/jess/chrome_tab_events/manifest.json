@@ -1,0 +1,12 @@
+{
+	"name": "Tab Events",
+	"version": "0.1",
+	"manifest_version": 2,
+	"description": "Crome tab events.",
+	"background": { "scripts": ["background.js"] },
+	"permissions": [
+		"tabs",
+		"*://*/*",
+		"file://*/*"
+	]
+}
