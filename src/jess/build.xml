@@ -1,7 +1,17 @@
 <project name="jess" basedir="." default="build">
+  <path id="cp">
+	<pathelement path="build"/>
+	<fileset dir="/home/jbalint/sw/restlet-jse-2.1.4/lib">
+	  <include name="**/*.jar"/>
+	</fileset>
+	<fileset dir="../../lib">
+	  <include name="mysql-connector-java.jar"/>
+	</fileset>
+  </path>
+
   <target name="build">
 	<mkdir dir="build"/>
-	<javac srcdir="." destdir="build" debug="true">
+	<javac srcdir="." destdir="build" debug="true" classpathref="cp">
 	  <include name="*.java"/>
 	</javac>
 	<jar destfile="../../lib/jess.jar"
@@ -10,13 +20,11 @@
 
   <target name="run-wmii-event-follower">
 	<java classname="WmiiEventFollower"
-		  fork="true">
-	  <classpath>
-		<pathelement path="build"/>
-		<fileset dir="../../lib">
-		  <include name="mysql-connector-java.jar"/>
-		</fileset>
-	  </classpath>
-	</java>
+		  fork="true" classpathref="cp"/>
+  </target>
+
+  <target name="run-rest-events">
+	<java classname="RestEvents"
+		  fork="true" classpathref="cp"/>
   </target>
 </project>

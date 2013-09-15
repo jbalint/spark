@@ -7,9 +7,16 @@
 // 	console.log(tab);
 // });
 
+var urlPrefix = "http://localhost:9003/chrome/tab/";
+
 function isInspectableUrl(url) {
 	return url.indexOf("http") == 0 ||
 		url.indexOf("file") == 0;
+}
+
+function post(tabId, method, data) {
+	jQuery.ajax(urlPrefix + tabId + "/" + method,
+				{data: data, dataType: "text", type: "POST"});
 }
 
 chrome.tabs.onActivated.addListener(function (activeInfo) {
@@ -20,23 +27,33 @@ chrome.tabs.onActivated.addListener(function (activeInfo) {
 		console.log("\ttitle=" + tab.title);
 		console.log("\turl=" + tab.url);
 		//console.log(activeInfo);
+		var params = {};
+		params.title = tab.title;
+		params.url = tab.url;
+		post(tab.id, "activate", params);
 	});
 });
 
 chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
 	if (!isInspectableUrl(tab.url))
 		return;
-	if (changeInfo.url) {
-		console.log("TAB-URL-CHANGE " + tabId);
-		console.log("\turl=" + tab.url);
-	}
-	//console.log(changeInfo);
 
 	// when page has loaded get the content
 	if (changeInfo.status == "complete") {
 		// skip is not {found,available}
 		if (tab.title.indexOf(tab.url + " is not ") == 0)
 			return;
+
+		console.log("TAB-URL-CHANGE " + tabId);
+		console.log("\turl=" + tab.url);
+
+		// post the event
+		var params = {};
+		params.title = tab.title;
+		params.url = tab.url;
+		post(tab.id, "urlChange", params);
+
+		// get the content
 		var injectD = {};
 		injectD.allFrames = true;
 		injectD.code = "chrome.runtime.sendMessage({content: document.documentElement.innerHTML});";
@@ -50,4 +67,7 @@ chrome.runtime.onMessage.addListener(function (message, sender) {
 	//console.log("onMessage: from tab: " + sender.tab.id);
 	//console.log(message);
 	//console.log(sender);
+	var params = {};
+	params.content = message.content;
+	post(sender.tab.id, "content", params);
 });
