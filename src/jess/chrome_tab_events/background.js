@@ -2,10 +2,16 @@
 
 // dont think this is useful
 // chrome.tabs.onCreated.addListener(function (tab) {
-// 	console.log("TAB CREATED");
-// 	console.log(tab.id);
-// 	console.log(tab);
+// 	mylog("TAB CREATED");
+// 	mylog(tab.id);
+// 	mylog(tab);
 // });
+
+function mylog(msg) {
+	if (false) {
+		console.log(msg);
+	}
+}
 
 var urlPrefix = "http://localhost:9003/chrome/tab/";
 
@@ -23,10 +29,10 @@ chrome.tabs.onActivated.addListener(function (activeInfo) {
 	chrome.tabs.get(activeInfo.tabId, function (tab) {
 		if (!isInspectableUrl(tab.url))
 			return;
-		console.log("TAB-ACTIVATE " + activeInfo.tabId);
-		console.log("\ttitle=" + tab.title);
-		console.log("\turl=" + tab.url);
-		//console.log(activeInfo);
+		mylog("TAB-ACTIVATE " + activeInfo.tabId);
+		mylog("\ttitle=" + tab.title);
+		mylog("\turl=" + tab.url);
+		//mylog(activeInfo);
 		var params = {};
 		params.title = tab.title;
 		params.url = tab.url;
@@ -44,8 +50,8 @@ chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
 		if (tab.title.indexOf(tab.url + " is not ") == 0)
 			return;
 
-		console.log("TAB-URL-CHANGE " + tabId);
-		console.log("\turl=" + tab.url);
+		mylog("TAB-URL-CHANGE " + tabId);
+		mylog("\turl=" + tab.url);
 
 		// post the event
 		var params = {};
@@ -64,9 +70,9 @@ chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
 // http://developer.chrome.com/extensions/messaging.html
 // http://developer.chrome.com/extensions/runtime.html#event-onMessage
 chrome.runtime.onMessage.addListener(function (message, sender) {
-	//console.log("onMessage: from tab: " + sender.tab.id);
-	//console.log(message);
-	//console.log(sender);
+	//mylog("onMessage: from tab: " + sender.tab.id);
+	//mylog(message);
+	//mylog(sender);
 	var params = {};
 	params.content = message.content;
 	post(sender.tab.id, "content", params);
