@@ -3,9 +3,10 @@
 	"version": "0.1",
 	"manifest_version": 2,
 	"description": "Crome tab events.",
-	"background": { "scripts": ["background.js","jquery-2.0.3.min.js"] },
+	"background": { "scripts": ["jquery.min.js","background.js","torrent_tracker.js"] },
 	"permissions": [
 		"tabs",
+		"notifications",
 		"*://*/*",
 		"file://*/*"
 	]
